@@ -1,0 +1,24 @@
+# Binarios y archivos compilados
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Directorios de dependencias y build
+/vendor/
+/bin/
+/tmp/
+
+# Archivos de sistema
+.DS_Store
+.env
+*.log
+
+# IDEs y editores
+.idea/
+.vscode/
+*.swp
+*.swo
