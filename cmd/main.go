@@ -38,7 +38,8 @@ func main() {
 		userRoutes.POST("", userHandler.Create)
 		userRoutes.GET("", userHandler.GetAll)
 		userRoutes.GET("/:id", userHandler.GetByID)
-		userRoutes.PUT("/:id", userHandler.Update)
+		userRoutes.PUT("/:id", userHandler.Update)                   // Actualización general
+		userRoutes.POST("/:id/password", userHandler.ChangePassword) // Cambio de contraseña
 		userRoutes.DELETE("/:id", userHandler.Delete)
 		userRoutes.GET("/permissions", userHandler.GetAllUsersWithPermissions)
 		userRoutes.GET("/:id/permissions", userHandler.GetUserPermissions)

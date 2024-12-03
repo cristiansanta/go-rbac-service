@@ -171,68 +171,58 @@ func (h *UserHandler) Update(c *gin.Context) {
 		return
 	}
 
+	// Obtener usuario existente
 	user, err := h.repo.GetByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Actualizar solo los campos proporcionados
-	if req.Nombre != "" {
-		user.Nombre = req.Nombre
-	}
-	if req.Apellidos != "" {
-		user.Apellidos = req.Apellidos
-	}
-	if req.TipoDocumento != "" {
-		user.TipoDocumento = req.TipoDocumento
-	}
-	if req.NumeroDocumento != "" {
-		user.NumeroDocumento = req.NumeroDocumento
-	}
-	if req.Sede != "" {
-		user.Sede = req.Sede
-	}
-	if req.IdRol != 0 {
-		user.IdRol = req.IdRol
-	}
-	if req.Regional != "" {
-		user.Regional = req.Regional
-	}
-	if req.Correo != "" {
-		user.Correo = req.Correo
-	}
-	if req.Telefono != "" {
-		user.Telefono = req.Telefono
-	}
-	if req.Contraseña != "" {
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Contraseña), bcrypt.DefaultCost)
+	// Verificar si el rol existe cuando se intenta cambiar
+	if req.IdRol != user.IdRol {
+		_, err := h.roleRepo.GetByID(req.IdRol)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al procesar la contraseña"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "El rol especificado no existe"})
 			return
 		}
-		user.Contraseña = string(hashedPassword)
 	}
 
+	// Actualizar campos permitidos
+	user.Nombre = req.Nombre
+	user.Apellidos = req.Apellidos
+	user.Sede = req.Sede
+	user.Regional = req.Regional
+	user.Correo = req.Correo
+	user.Telefono = req.Telefono
+	user.IdRol = req.IdRol
+
+	// Actualizar usuario
 	if err := h.repo.Update(user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	// Obtener usuario actualizado con información del rol
+	updatedUser, err := h.repo.GetByID(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, models.UserResponse{
-		ID:                 user.ID,
-		Nombre:             user.Nombre,
-		Apellidos:          user.Apellidos,
-		TipoDocumento:      user.TipoDocumento,
-		NumeroDocumento:    user.NumeroDocumento,
-		Sede:               user.Sede,
-		IdRol:              user.IdRol,
-		Role:               user.Role,
-		Regional:           user.Regional,
-		Correo:             user.Correo,
-		Telefono:           user.Telefono,
-		FechaCreacion:      user.FechaCreacion,
-		FechaActualizacion: user.FechaActualizacion,
+		ID:                 updatedUser.ID,
+		Nombre:             updatedUser.Nombre,
+		Apellidos:          updatedUser.Apellidos,
+		TipoDocumento:      updatedUser.TipoDocumento,
+		NumeroDocumento:    updatedUser.NumeroDocumento,
+		Sede:               updatedUser.Sede,
+		IdRol:              updatedUser.IdRol,
+		Role:               updatedUser.Role,
+		Regional:           updatedUser.Regional,
+		Correo:             updatedUser.Correo,
+		Telefono:           updatedUser.Telefono,
+		FechaCreacion:      updatedUser.FechaCreacion,
+		FechaActualizacion: updatedUser.FechaActualizacion,
 	})
 }
 
@@ -275,4 +265,49 @@ func (h *UserHandler) GetUserPermissions(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, permissions)
+}
+
+func (h *UserHandler) ChangePassword(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID inválido"})
+		return
+	}
+
+	var req struct {
+		CurrentPassword string `json:"current_password" binding:"required"`
+		NewPassword     string `json:"new_password" binding:"required,min=6"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err := h.repo.GetByID(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Verificar contraseña actual
+	if !user.ValidatePassword(req.CurrentPassword) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Contraseña actual incorrecta"})
+		return
+	}
+
+	// Generar hash de la nueva contraseña
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al procesar la nueva contraseña"})
+		return
+	}
+
+	// Actualizar contraseña
+	if err := h.repo.UpdatePassword(id, string(hashedPassword)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Contraseña actualizada exitosamente"})
 }

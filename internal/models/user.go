@@ -57,16 +57,13 @@ type CreateUserRequest struct {
 }
 
 type UpdateUserRequest struct {
-	Nombre          string `json:"nombre,omitempty"`
-	Apellidos       string `json:"apellidos,omitempty"`
-	TipoDocumento   string `json:"tipo_documento,omitempty"`
-	NumeroDocumento string `json:"numero_documento,omitempty"`
-	Sede            string `json:"sede,omitempty"`
-	IdRol           int    `json:"id_rol,omitempty"`
-	Regional        string `json:"regional,omitempty"`
-	Correo          string `json:"correo,omitempty" binding:"omitempty,email"`
-	Telefono        string `json:"telefono,omitempty"`
-	Contraseña      string `json:"contraseña,omitempty" binding:"omitempty,min=6"`
+	Nombre    string `json:"nombre" binding:"required"`
+	Apellidos string `json:"apellidos" binding:"required"`
+	Sede      string `json:"sede" binding:"required"`
+	Regional  string `json:"regional" binding:"required"`
+	Correo    string `json:"correo" binding:"required,email"`
+	Telefono  string `json:"telefono" binding:"required"`
+	IdRol     int    `json:"id_rol" binding:"required"`
 }
 
 type UserResponse struct {
@@ -77,7 +74,7 @@ type UserResponse struct {
 	NumeroDocumento    string    `json:"numero_documento"`
 	Sede               string    `json:"sede"`
 	IdRol              int       `json:"id_rol"`
-	Role               Role      `json:"role,omitempty"`
+	Role               Role      `json:"role"`
 	Regional           string    `json:"regional"`
 	Correo             string    `json:"correo"`
 	Telefono           string    `json:"telefono"`

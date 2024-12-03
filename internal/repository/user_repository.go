@@ -35,8 +35,48 @@ func (r *UserRepository) GetByID(id int) (*models.User, error) {
 }
 
 func (r *UserRepository) Update(user *models.User) error {
-	// Trigger de actualización automática de fecha_actualizacion se maneja en la base de datos
-	return r.db.Save(user).Error
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// Verificar si el correo ya existe para otro usuario
+		var count int64
+		if err := tx.Model(&models.User{}).
+			Where("correo = ? AND id != ?", user.Correo, user.ID).
+			Count(&count).Error; err != nil {
+			return err
+		}
+		if count > 0 {
+			return fmt.Errorf("el correo ya está en uso por otro usuario")
+		}
+
+		// Actualizar solo los campos permitidos
+		result := tx.Model(user).Select(
+			"nombre",
+			"apellidos",
+			"sede",
+			"regional",
+			"correo",
+			"telefono",
+			"id_rol",
+		).Updates(map[string]interface{}{
+			"nombre":    user.Nombre,
+			"apellidos": user.Apellidos,
+			"sede":      user.Sede,
+			"regional":  user.Regional,
+			"correo":    user.Correo,
+			"telefono":  user.Telefono,
+			"id_rol":    user.IdRol,
+		})
+
+		if result.Error != nil {
+			return result.Error
+		}
+
+		// Verificar si se actualizó algún registro
+		if result.RowsAffected == 0 {
+			return fmt.Errorf("no se encontró el usuario o no se realizaron cambios")
+		}
+
+		return nil
+	})
 }
 
 func (r *UserRepository) Delete(id int) error {
