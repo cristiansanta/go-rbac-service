@@ -3,6 +3,7 @@ package repository
 import (
 	"auth-service/internal/models"
 	"fmt"
+	"regexp"
 
 	"gorm.io/gorm"
 )
@@ -16,6 +17,29 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 }
 
 func (r *UserRepository) Create(user *models.User) error {
+	// Validar que número de documento sean solo dígitos
+	if !regexp.MustCompile(`^\d+$`).MatchString(user.NumeroDocumento) {
+		return fmt.Errorf("el número de documento debe contener solo números")
+	}
+
+	// Validar que teléfono sean solo dígitos
+	if !regexp.MustCompile(`^\d+$`).MatchString(user.Telefono) {
+		return fmt.Errorf("el teléfono debe contener solo números")
+	}
+
+	// Verificar si existe por documento
+	var exists bool
+	if err := r.db.Model(&models.User{}).
+		Where("tipo_documento = ? AND numero_documento = ?", user.TipoDocumento, user.NumeroDocumento).
+		Select("count(*) > 0").
+		Scan(&exists).Error; err != nil {
+		return err
+	}
+	if exists {
+		return fmt.Errorf("ya existe un usuario con este documento")
+	}
+
+	// Resto del código existente...
 	return r.db.Create(user).Error
 }
 
