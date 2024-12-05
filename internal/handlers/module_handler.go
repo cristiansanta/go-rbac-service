@@ -27,7 +27,6 @@ func (h *ModuleHandler) Create(c *gin.Context) {
 	module := &models.Module{
 		Nombre:      req.Nombre,
 		Descripcion: req.Descripcion,
-		Estado:      req.Estado,
 	}
 
 	if err := h.repo.Create(module); err != nil {
@@ -39,7 +38,6 @@ func (h *ModuleHandler) Create(c *gin.Context) {
 		ID:                 module.ID,
 		Nombre:             module.Nombre,
 		Descripcion:        module.Descripcion,
-		Estado:             module.Estado,
 		FechaCreacion:      module.FechaCreacion,
 		FechaActualizacion: module.FechaActualizacion,
 	})
@@ -58,7 +56,6 @@ func (h *ModuleHandler) GetAll(c *gin.Context) {
 			ID:                 module.ID,
 			Nombre:             module.Nombre,
 			Descripcion:        module.Descripcion,
-			Estado:             module.Estado,
 			FechaCreacion:      module.FechaCreacion,
 			FechaActualizacion: module.FechaActualizacion,
 		}
@@ -140,4 +137,48 @@ func (h *ModuleHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Módulo eliminado exitosamente",
 	})
+}
+func (h *ModuleHandler) Restore(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID inválido"})
+		return
+	}
+
+	if err := h.repo.Restore(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	moduleWithPermissions, err := h.repo.GetModuleWithPermissions(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Módulo restaurado exitosamente",
+		"module":  moduleWithPermissions,
+	})
+}
+func (h *ModuleHandler) GetDeletedModules(c *gin.Context) {
+	modules, err := h.repo.GetDeletedModules()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	response := make([]models.ModuleResponse, len(modules))
+	for i, module := range modules {
+		response[i] = models.ModuleResponse{
+			ID:                 module.ID,
+			Nombre:             module.Nombre,
+			Descripcion:        module.Descripcion,
+			FechaCreacion:      module.FechaCreacion,
+			FechaActualizacion: module.FechaActualizacion,
+			FechaEliminacion:   module.FechaEliminacion,
+		}
+	}
+
+	c.JSON(http.StatusOK, response)
 }

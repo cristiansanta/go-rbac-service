@@ -75,6 +75,8 @@ func main() {
 		// Nuevas rutas para módulos
 		moduleRoutes.DELETE("/:id", moduleHandler.Delete)
 		moduleRoutes.DELETE("/remove-permission", moduleHandler.RemovePermission)
+		moduleRoutes.POST("/:id/restore", moduleHandler.Restore)
+		moduleRoutes.GET("/deleted", moduleHandler.GetDeletedModules)
 	}
 
 	// Start server

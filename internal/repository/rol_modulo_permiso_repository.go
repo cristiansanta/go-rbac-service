@@ -2,6 +2,7 @@ package repository
 
 import (
 	"auth-service/internal/models"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -20,13 +21,21 @@ func (r *RolModuloPermisoRepository) Create(rolModuloPermiso *models.RolModuloPe
 
 func (r *RolModuloPermisoRepository) GetAll() ([]models.RolModuloPermiso, error) {
 	var rolModuloPermisos []models.RolModuloPermiso
-	err := r.db.Preload("Role").Preload("Modulo").Preload("PermisoTipo").Find(&rolModuloPermisos).Error
+	err := r.db.Where("fecha_eliminacion IS NULL").
+		Preload("Role").
+		Preload("Modulo", "fecha_eliminacion IS NULL").
+		Preload("PermisoTipo").
+		Find(&rolModuloPermisos).Error
 	return rolModuloPermisos, err
 }
 
 func (r *RolModuloPermisoRepository) GetByID(id int) (*models.RolModuloPermiso, error) {
 	var rolModuloPermiso models.RolModuloPermiso
-	err := r.db.Preload("Role").Preload("Modulo").Preload("PermisoTipo").First(&rolModuloPermiso, id).Error
+	err := r.db.Where("fecha_eliminacion IS NULL").
+		Preload("Role").
+		Preload("Modulo", "fecha_eliminacion IS NULL").
+		Preload("PermisoTipo").
+		First(&rolModuloPermiso, id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -35,18 +44,24 @@ func (r *RolModuloPermisoRepository) GetByID(id int) (*models.RolModuloPermiso, 
 
 func (r *RolModuloPermisoRepository) GetByRoleID(roleID int) ([]models.RolModuloPermiso, error) {
 	var rolModuloPermisos []models.RolModuloPermiso
-	err := r.db.Where("id_rol = ?", roleID).
+	err := r.db.Where("id_rol = ? AND fecha_eliminacion IS NULL", roleID).
 		Preload("Role").
-		Preload("Modulo").
+		Preload("Modulo", "fecha_eliminacion IS NULL").
 		Preload("PermisoTipo").
 		Find(&rolModuloPermisos).Error
 	return rolModuloPermisos, err
 }
 
 func (r *RolModuloPermisoRepository) Delete(id int) error {
-	return r.db.Delete(&models.RolModuloPermiso{}, id).Error
+	now := time.Now()
+	return r.db.Model(&models.RolModuloPermiso{}).
+		Where("id = ? AND fecha_eliminacion IS NULL", id).
+		Update("fecha_eliminacion", now).Error
 }
 
 func (r *RolModuloPermisoRepository) DeleteByRoleID(roleID int) error {
-	return r.db.Where("id_rol = ?", roleID).Delete(&models.RolModuloPermiso{}).Error
+	now := time.Now()
+	return r.db.Model(&models.RolModuloPermiso{}).
+		Where("id_rol = ? AND fecha_eliminacion IS NULL", roleID).
+		Update("fecha_eliminacion", now).Error
 }
