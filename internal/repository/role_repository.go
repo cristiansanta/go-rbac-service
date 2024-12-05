@@ -16,6 +16,18 @@ func NewRoleRepository(db *gorm.DB) *RoleRepository {
 }
 
 func (r *RoleRepository) Create(role *models.Role) error {
+	var exists bool
+	if err := r.db.Model(&models.Role{}).
+		Where("LOWER(nombre) = LOWER(?)", role.Nombre).
+		Select("count(*) > 0").
+		Scan(&exists).Error; err != nil {
+		return err
+	}
+
+	if exists {
+		return fmt.Errorf("ya existe un rol con este nombre")
+	}
+
 	return r.db.Create(role).Error
 }
 
@@ -49,87 +61,91 @@ func (r *RoleRepository) Delete(id int) error {
 	})
 }
 
-func (r *RoleRepository) AssignModulePermission(roleID, moduleID, permisoTipoID int) error {
+func (r *RoleRepository) AssignModulePermission(roleID, moduleID int, permisoTipoIDs []int) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		// Verificar que el rol existe
+		// Verificar rol
 		var role models.Role
 		if err := tx.First(&role, roleID).Error; err != nil {
 			return fmt.Errorf("rol no encontrado: %v", err)
 		}
 
-		// Verificar que el módulo existe
+		// Verificar módulo
 		var module models.Module
 		if err := tx.First(&module, moduleID).Error; err != nil {
 			return fmt.Errorf("módulo no encontrado: %v", err)
 		}
 
-		// Verificar que el tipo de permiso existe
-		var permisoTipo models.PermisoTipo
-		if err := tx.First(&permisoTipo, permisoTipoID).Error; err != nil {
-			return fmt.Errorf("tipo de permiso no encontrado: %v", err)
+		// Verificar permisos
+		var count int64
+		if err := tx.Model(&models.PermisoTipo{}).Where("id IN ?", permisoTipoIDs).Count(&count).Error; err != nil {
+			return err
+		}
+		if int(count) != len(permisoTipoIDs) {
+			return fmt.Errorf("algunos permisos no existen")
 		}
 
-		// Verificar que el permiso está disponible para el módulo
-		var moduloPermiso models.ModuloPermiso
-		if err := tx.Where("id_modulo = ? AND id_permiso_tipo = ?", moduleID, permisoTipoID).
-			First(&moduloPermiso).Error; err != nil {
-			return fmt.Errorf("el permiso no está disponible para este módulo")
-		}
-
-		// Verificar si ya existe la asignación
-		var exists bool
-		err := tx.Model(&models.RolModuloPermiso{}).
-			Where("id_rol = ? AND id_modulo = ? AND id_permiso_tipo = ?", roleID, moduleID, permisoTipoID).
-			Select("count(*) > 0").
-			Scan(&exists).Error
-
-		if err != nil {
+		// Eliminar permisos existentes
+		if err := tx.Where("id_rol = ? AND id_modulo = ?", roleID, moduleID).
+			Delete(&models.RolModuloPermiso{}).Error; err != nil {
 			return err
 		}
 
-		if exists {
-			return fmt.Errorf("esta asignación de permiso ya existe")
+		// Crear nuevos permisos
+		for _, permisoID := range permisoTipoIDs {
+			rolModuloPermiso := &models.RolModuloPermiso{
+				IdRol:         roleID,
+				IdModulo:      moduleID,
+				IdPermisoTipo: permisoID,
+			}
+			if err := tx.Create(rolModuloPermiso).Error; err != nil {
+				return err
+			}
 		}
 
-		// Crear nueva asignación
-		rolModuloPermiso := &models.RolModuloPermiso{
-			IdRol:         roleID,
-			IdModulo:      moduleID,
-			IdPermisoTipo: permisoTipoID,
-		}
-
-		return tx.Create(rolModuloPermiso).Error
+		return nil
 	})
 }
 
-func (r *RoleRepository) GetRolePermissions(roleID int) ([]models.RolModuloPermiso, error) {
-    var permissions []models.RolModuloPermiso
-    
-    // Primero verifica si el rol existe
-    var role models.Role
-    if err := r.db.First(&role, roleID).Error; err != nil {
-        return nil, fmt.Errorf("rol no encontrado: %v", err)
-    }
-    
-    // Obtiene los permisos con todos los preloads necesarios
-    err := r.db.Where("id_rol = ?", roleID).
-        Preload("Role", func(db *gorm.DB) *gorm.DB {
-            return db.Select("id, nombre, fecha_creacion, fecha_actualizacion")
-        }).
-        Preload("Modulo").
-        Preload("PermisoTipo").
-        Find(&permissions).Error
+func (r *RoleRepository) GetRolePermissions(roleID int) ([]models.RolModuloPermisoResponse, error) {
+	var role models.Role
+	if err := r.db.First(&role, roleID).Error; err != nil {
+		return nil, fmt.Errorf("rol no encontrado: %v", err)
+	}
 
-    if err != nil {
-        return nil, err
-    }
+	var permissions []models.RolModuloPermiso
+	err := r.db.Where("id_rol = ? AND fecha_eliminacion IS NULL", roleID).
+		Preload("Role", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id, nombre, descripcion, fecha_creacion, fecha_actualizacion")
+		}).
+		Preload("Modulo").
+		Preload("PermisoTipo").
+		Find(&permissions).Error
 
-    // Asegura que cada permiso tenga la información correcta del rol
-    for i := range permissions {
-        permissions[i].Role = role
-    }
+	if err != nil {
+		return nil, err
+	}
 
-    return permissions, nil
+	response := make([]models.RolModuloPermisoResponse, len(permissions))
+	for i, p := range permissions {
+		response[i] = models.RolModuloPermisoResponse{
+			ID:            p.ID,
+			IdRol:         p.IdRol,
+			IdModulo:      p.IdModulo,
+			IdPermisoTipo: p.IdPermisoTipo,
+			FechaCreacion: p.FechaCreacion,
+			Role:          p.Role,
+			Modulo: models.ModuleResponse{
+				ID:                 p.Modulo.ID,
+				Nombre:             p.Modulo.Nombre,
+				Descripcion:        p.Modulo.Descripcion,
+				FechaCreacion:      p.Modulo.FechaCreacion,
+				FechaActualizacion: p.Modulo.FechaActualizacion,
+			},
+			PermisoTipo: p.PermisoTipo,
+		}
+	}
+
+	return response, nil
 }
 
 func (r *RoleRepository) RemoveModulePermission(roleID, moduleID, permisoTipoID int) error {

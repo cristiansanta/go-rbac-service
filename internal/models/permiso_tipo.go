@@ -1,9 +1,10 @@
 package models
 
 const (
-	PermisoRead    = "R" // Ver
-	PermisoWrite   = "W" // Crear/Editar
-	PermisoExecute = "X" // Eliminar
+	PermisoVer        = "R" // Ver
+	PermisoCreateEdit = "W" // Crear/Editar
+	PermisoExportar   = "X" // Exportar
+	PermisoEliminar   = "D" // Eliminar
 )
 
 type PermisoTipo struct {

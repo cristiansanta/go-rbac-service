@@ -2,6 +2,8 @@ package repository
 
 import (
 	"auth-service/internal/models"
+	"fmt"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -15,6 +17,27 @@ func NewPermisoTipoRepository(db *gorm.DB) *PermisoTipoRepository {
 }
 
 func (r *PermisoTipoRepository) Create(permisoTipo *models.PermisoTipo) error {
+	validCodigos := []string{
+		models.PermisoVer,
+		models.PermisoCreateEdit,
+		models.PermisoExportar,
+		models.PermisoEliminar,
+	}
+
+	codigoUpper := strings.ToUpper(permisoTipo.Codigo)
+	isValid := false
+	for _, codigo := range validCodigos {
+		if codigoUpper == codigo {
+			permisoTipo.Codigo = codigo
+			isValid = true
+			break
+		}
+	}
+
+	if !isValid {
+		return fmt.Errorf("código de permiso inválido")
+	}
+
 	return r.db.Create(permisoTipo).Error
 }
 

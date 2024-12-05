@@ -19,3 +19,14 @@ type RolModuloPermiso struct {
 func (RolModuloPermiso) TableName() string {
 	return "rol_modulo_permisos"
 }
+
+type RolModuloPermisoResponse struct {
+	ID            int            `json:"id"`
+	IdRol         int            `json:"id_rol"`
+	IdModulo      int            `json:"id_modulo"`
+	IdPermisoTipo int            `json:"id_permiso_tipo"`
+	FechaCreacion time.Time      `json:"fecha_creacion"`
+	Role          Role           `json:"role"`
+	Modulo        ModuleResponse `json:"modulo"`
+	PermisoTipo   PermisoTipo    `json:"permiso_tipo"`
+}

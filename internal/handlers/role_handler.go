@@ -29,7 +29,8 @@ func (h *RoleHandler) Create(c *gin.Context) {
 	}
 
 	role := &models.Role{
-		Nombre: req.Nombre,
+		Nombre:      req.Nombre,
+		Descripcion: req.Descripcion,
 	}
 
 	if err := h.repo.Create(role); err != nil {
@@ -78,32 +79,29 @@ func (h *RoleHandler) AssignModulePermission(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":         "Permiso asignado exitosamente al rol",
-		"role_id":         req.RoleID,
-		"modulo_id":       req.ModuloID,
-		"permiso_tipo_id": req.PermisoTipoID,
+		"message": "Permisos asignados exitosamente al rol",
 	})
 }
 
 func (h *RoleHandler) GetRolePermissions(c *gin.Context) {
-    roleID := c.Param("id")
-    id, err := strconv.Atoi(roleID)
-    if err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "ID inválido"})
-        return
-    }
+	roleID := c.Param("id")
+	id, err := strconv.Atoi(roleID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID inválido"})
+		return
+	}
 
-    permissions, err := h.repo.GetRolePermissions(id)
-    if err != nil {
-        if err.Error() == "rol no encontrado: record not found" {
-            c.JSON(http.StatusNotFound, gin.H{"error": "Rol no encontrado"})
-            return
-        }
-        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-        return
-    }
+	permissions, err := h.repo.GetRolePermissions(id)
+	if err != nil {
+		if err.Error() == "rol no encontrado: record not found" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Rol no encontrado"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
-    c.JSON(http.StatusOK, permissions)
+	c.JSON(http.StatusOK, permissions)
 }
 
 func (h *RoleHandler) RemoveModulePermission(c *gin.Context) {

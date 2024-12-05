@@ -15,6 +15,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to setup database: %v", err)
 	}
+	if err := config.SeedPermisos(db); err != nil {
+		log.Fatalf("Failed to seed permisos: %v", err)
+	}
 
 	// Initialize repositories
 	roleRepo := repository.NewRoleRepository(db)

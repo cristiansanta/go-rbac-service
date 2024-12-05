@@ -16,7 +16,20 @@ func NewModuleRepository(db *gorm.DB) *ModuleRepository {
 	return &ModuleRepository{db: db}
 }
 
+// repository/module_repository.go
 func (r *ModuleRepository) Create(module *models.Module) error {
+	var exists bool
+	if err := r.db.Model(&models.Module{}).
+		Where("LOWER(nombre) = LOWER(?)", module.Nombre).
+		Select("count(*) > 0").
+		Scan(&exists).Error; err != nil {
+		return err
+	}
+
+	if exists {
+		return fmt.Errorf("ya existe un módulo con este nombre")
+	}
+
 	return r.db.Create(module).Error
 }
 
