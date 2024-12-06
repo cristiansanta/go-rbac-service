@@ -1,10 +1,17 @@
 package handlers
 
 import (
+	"auth-service/internal/constants"
 	"auth-service/internal/models"
 	"auth-service/internal/repository"
+	"bytes"
+	"encoding/json"
+	"io"
+	"log"
 	"net/http"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -159,73 +166,129 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 }
 
 func (h *UserHandler) Update(c *gin.Context) {
+	log.Println("Iniciando actualización de usuario")
+
+	// Obtener y validar el ID
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "ID inválido"})
 		return
 	}
 
-	var req models.UpdateUserRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
 	// Obtener usuario existente
 	user, err := h.repo.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Usuario no encontrado"})
 		return
 	}
 
-	// Verificar si el rol existe cuando se intenta cambiar
-	if req.IdRol != user.IdRol {
-		_, err := h.roleRepo.GetByID(req.IdRol)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "El rol especificado no existe"})
-			return
+	// Leer el body como raw bytes
+	bodyBytes, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Error leyendo datos"})
+		return
+	}
+	// Restaurar el body
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+	var req models.UpdateUserRequest
+	if err := json.Unmarshal(bodyBytes, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Error en formato JSON"})
+		return
+	}
+
+	// Obtener información del usuario actual
+	userRole := c.GetString("user_role")
+	userID := c.GetInt("user_id")
+
+	// Si es SuperAdmin actualizando sus propios datos
+	if strings.ToUpper(userRole) == constants.RoleSuperAdmin && userID == id {
+		// Mantener el rol original pero permitir actualizar otros campos
+		originalRol := user.IdRol
+		// Actualizar otros campos
+		if req.Nombre != "" {
+			user.Nombre = req.Nombre
+		}
+		if req.Apellidos != "" {
+			user.Apellidos = req.Apellidos
+		}
+		if req.TipoDocumento != "" {
+			user.TipoDocumento = req.TipoDocumento
+		}
+		if req.NumeroDocumento != "" {
+			user.NumeroDocumento = req.NumeroDocumento
+		}
+		if req.Sede != "" {
+			user.Sede = req.Sede
+		}
+		if req.Regional != "" {
+			user.Regional = req.Regional
+		}
+		if req.Correo != "" {
+			user.Correo = req.Correo
+		}
+		if req.Telefono != "" {
+			user.Telefono = req.Telefono
+		}
+		// Mantener el rol original
+		user.IdRol = originalRol
+	} else {
+		// Para otros usuarios o cuando SuperAdmin modifica otros usuarios
+		// Actualizar todos los campos incluido el rol
+		if req.Nombre != "" {
+			user.Nombre = req.Nombre
+		}
+		if req.Apellidos != "" {
+			user.Apellidos = req.Apellidos
+		}
+		if req.TipoDocumento != "" {
+			user.TipoDocumento = req.TipoDocumento
+		}
+		if req.NumeroDocumento != "" {
+			user.NumeroDocumento = req.NumeroDocumento
+		}
+		if req.Sede != "" {
+			user.Sede = req.Sede
+		}
+		if req.Regional != "" {
+			user.Regional = req.Regional
+		}
+		if req.Correo != "" {
+			user.Correo = req.Correo
+		}
+		if req.Telefono != "" {
+			user.Telefono = req.Telefono
+		}
+		if req.IdRol != 0 {
+			user.IdRol = req.IdRol
 		}
 	}
 
-	// Actualizar todos los campos permitidos
-	user.Nombre = req.Nombre
-	user.Apellidos = req.Apellidos
-	user.TipoDocumento = req.TipoDocumento
-	user.NumeroDocumento = req.NumeroDocumento
-	user.Sede = req.Sede
-	user.Regional = req.Regional
-	user.Correo = req.Correo
-	user.Telefono = req.Telefono
-	user.IdRol = req.IdRol
+	// Validar datos antes de actualizar
+	if !regexp.MustCompile(`^\d+$`).MatchString(user.NumeroDocumento) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "el número de documento debe contener solo números"})
+		return
+	}
 
-	// Actualizar usuario
+	if !regexp.MustCompile(`^\d+$`).MatchString(user.Telefono) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "el teléfono debe contener solo números"})
+		return
+	}
+
+	// Actualizar en base de datos
 	if err := h.repo.Update(user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Obtener usuario actualizado con información del rol
+	// Obtener usuario actualizado
 	updatedUser, err := h.repo.GetByID(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, models.UserResponse{
-		ID:                 updatedUser.ID,
-		Nombre:             updatedUser.Nombre,
-		Apellidos:          updatedUser.Apellidos,
-		TipoDocumento:      updatedUser.TipoDocumento,
-		NumeroDocumento:    updatedUser.NumeroDocumento,
-		Sede:               updatedUser.Sede,
-		IdRol:              updatedUser.IdRol,
-		Role:               updatedUser.Role,
-		Regional:           updatedUser.Regional,
-		Correo:             updatedUser.Correo,
-		Telefono:           updatedUser.Telefono,
-		FechaCreacion:      updatedUser.FechaCreacion,
-		FechaActualizacion: updatedUser.FechaActualizacion,
-	})
+	c.JSON(http.StatusOK, updatedUser)
 }
 
 func (h *UserHandler) Delete(c *gin.Context) {

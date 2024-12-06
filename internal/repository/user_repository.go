@@ -3,6 +3,7 @@ package repository
 import (
 	"auth-service/internal/models"
 	"fmt"
+	"log"
 	"regexp"
 
 	"gorm.io/gorm"
@@ -148,8 +149,11 @@ func (r *UserRepository) ExistsByDocumento(tipoDoc, numDoc string) (bool, error)
 
 func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
 	var user models.User
-	err := r.db.Where("correo = ?", email).First(&user).Error
+	err := r.db.Preload("Role"). // Aseguramos cargar la relación Role
+					Where("correo = ?", email).
+					First(&user).Error
 	if err != nil {
+		log.Printf("Error en GetByEmail: %v", err) // Agregar log
 		return nil, fmt.Errorf("usuario no encontrado: %v", err)
 	}
 	return &user, nil

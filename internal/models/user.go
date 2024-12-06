@@ -1,6 +1,8 @@
 package models
 
 import (
+	"auth-service/internal/constants"
+	"log"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -28,15 +30,20 @@ func (User) TableName() string {
 	return "usuarios"
 }
 
+// BeforeCreate se ejecuta antes de crear un usuario
 func (u *User) BeforeCreate(tx *gorm.DB) error {
+	log.Printf("BeforeCreate: Hasheando contraseña para usuario: %s", u.Correo)
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(u.Contraseña), bcrypt.DefaultCost)
 	if err != nil {
+		log.Printf("Error hasheando contraseña: %v", err)
 		return err
 	}
 	u.Contraseña = string(hashedPassword)
+	log.Printf("Contraseña hasheada exitosamente para usuario: %s", u.Correo)
 	return nil
 }
 
+// ComparePassword compara la contraseña proporcionada con el hash almacenado
 func (u *User) ValidatePassword(password string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(u.Contraseña), []byte(password))
 	return err == nil
@@ -57,15 +64,15 @@ type CreateUserRequest struct {
 }
 
 type UpdateUserRequest struct {
-	Nombre          string `json:"nombre" binding:"required"`
-	Apellidos       string `json:"apellidos" binding:"required"`
-	TipoDocumento   string `json:"tipo_documento" binding:"required"`
-	NumeroDocumento string `json:"numero_documento" binding:"required"`
-	Sede            string `json:"sede" binding:"required"`
-	Regional        string `json:"regional" binding:"required"`
-	Correo          string `json:"correo" binding:"required,email"`
-	Telefono        string `json:"telefono" binding:"required"`
-	IdRol           int    `json:"id_rol" binding:"required"`
+	Nombre          string `json:"nombre,omitempty"`
+	Apellidos       string `json:"apellidos,omitempty"`
+	TipoDocumento   string `json:"tipo_documento,omitempty"`
+	NumeroDocumento string `json:"numero_documento,omitempty"`
+	Sede            string `json:"sede,omitempty"`
+	Regional        string `json:"regional,omitempty"`
+	Correo          string `json:"correo,omitempty"`
+	Telefono        string `json:"telefono,omitempty"`
+	IdRol           int    `json:"id_rol,omitempty"`
 }
 
 type UserResponse struct {
@@ -82,4 +89,18 @@ type UserResponse struct {
 	Telefono           string    `json:"telefono"`
 	FechaCreacion      time.Time `json:"fecha_creacion"`
 	FechaActualizacion time.Time `json:"fecha_actualizacion"`
+}
+
+func (u *User) IsSuperAdmin() bool {
+	return u.Role.Nombre == constants.RoleSuperAdmin
+}
+
+// HasPermission verifica si el usuario tiene un permiso específico
+func (u *User) HasPermission(moduleCode string, permissionCode string) bool {
+	if u.IsSuperAdmin() {
+		return true
+	}
+
+	// Implementaremos esto más adelante cuando tengamos la lógica de permisos
+	return false
 }

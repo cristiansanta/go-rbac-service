@@ -3,6 +3,7 @@ package config
 import (
 	"auth-service/internal/models"
 	"fmt"
+	"log"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -24,14 +25,18 @@ func SetupDatabase() (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to connect to database: %v", err)
 	}
 
-	// Create schema if it doesn't exist
-	db.Exec("CREATE SCHEMA IF NOT EXISTS testing")
+	// Crear schema si no existe
+	if err := db.Exec("CREATE SCHEMA IF NOT EXISTS testing").Error; err != nil {
+		return nil, fmt.Errorf("error creando schema: %v", err)
+	}
 
-	// Set default schema
-	db.Exec("SET search_path TO testing")
+	// Establecer schema por defecto
+	if err := db.Exec("SET search_path TO testing").Error; err != nil {
+		return nil, fmt.Errorf("error estableciendo schema: %v", err)
+	}
 
-	// Create update_fecha_actualizacion function if it doesn't exist
-	db.Exec(`
+	// Función de actualización
+	if err := db.Exec(`
         CREATE OR REPLACE FUNCTION testing.update_fecha_actualizacion()
         RETURNS TRIGGER AS $$
         BEGIN
@@ -39,9 +44,11 @@ func SetupDatabase() (*gorm.DB, error) {
             RETURN NEW;
         END;
         $$ LANGUAGE plpgsql;
-    `)
+    `).Error; err != nil {
+		log.Printf("Error creando función update_fecha_actualizacion: %v", err)
+	}
 
-	// Automigrate the models
+	// Automigrate
 	if err := db.AutoMigrate(
 		&models.Role{},
 		&models.PermisoTipo{},
@@ -49,8 +56,21 @@ func SetupDatabase() (*gorm.DB, error) {
 		&models.ModuloPermiso{},
 		&models.RolModuloPermiso{},
 		&models.User{},
+		&models.TokenBlacklist{},
+		&models.AuditLog{}, // Nueva tabla
 	); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %v", err)
+	}
+
+	// Seed data
+	if err := SeedPermisos(db); err != nil {
+		log.Printf("Error en SeedPermisos: %v", err)
+		return nil, fmt.Errorf("error al crear permisos: %v", err)
+	}
+
+	if err := SeedSuperAdmin(db); err != nil {
+		log.Printf("Error en SeedSuperAdmin: %v", err)
+		return nil, fmt.Errorf("error al crear SuperAdmin: %v", err)
 	}
 
 	return db, nil
