@@ -57,13 +57,15 @@ type CreateUserRequest struct {
 }
 
 type UpdateUserRequest struct {
-	Nombre    string `json:"nombre" binding:"required"`
-	Apellidos string `json:"apellidos" binding:"required"`
-	Sede      string `json:"sede" binding:"required"`
-	Regional  string `json:"regional" binding:"required"`
-	Correo    string `json:"correo" binding:"required,email"`
-	Telefono  string `json:"telefono" binding:"required"`
-	IdRol     int    `json:"id_rol" binding:"required"`
+	Nombre          string `json:"nombre" binding:"required"`
+	Apellidos       string `json:"apellidos" binding:"required"`
+	TipoDocumento   string `json:"tipo_documento" binding:"required"`
+	NumeroDocumento string `json:"numero_documento" binding:"required"`
+	Sede            string `json:"sede" binding:"required"`
+	Regional        string `json:"regional" binding:"required"`
+	Correo          string `json:"correo" binding:"required,email"`
+	Telefono        string `json:"telefono" binding:"required"`
+	IdRol           int    `json:"id_rol" binding:"required"`
 }
 
 type UserResponse struct {

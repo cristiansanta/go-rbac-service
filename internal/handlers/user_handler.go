@@ -187,9 +187,11 @@ func (h *UserHandler) Update(c *gin.Context) {
 		}
 	}
 
-	// Actualizar campos permitidos
+	// Actualizar todos los campos permitidos
 	user.Nombre = req.Nombre
 	user.Apellidos = req.Apellidos
+	user.TipoDocumento = req.TipoDocumento
+	user.NumeroDocumento = req.NumeroDocumento
 	user.Sede = req.Sede
 	user.Regional = req.Regional
 	user.Correo = req.Correo

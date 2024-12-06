@@ -35,12 +35,7 @@ func (h *PermisoTipoHandler) Create(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, models.PermisoTipoResponse{
-		ID:          permisoTipo.ID,
-		Codigo:      permisoTipo.Codigo,
-		Nombre:      permisoTipo.Nombre,
-		Descripcion: permisoTipo.Descripcion,
-	})
+	c.JSON(http.StatusCreated, permisoTipo.ToResponse())
 }
 
 func (h *PermisoTipoHandler) GetAll(c *gin.Context) {
@@ -52,12 +47,7 @@ func (h *PermisoTipoHandler) GetAll(c *gin.Context) {
 
 	response := make([]models.PermisoTipoResponse, len(permisoTipos))
 	for i, pt := range permisoTipos {
-		response[i] = models.PermisoTipoResponse{
-			ID:          pt.ID,
-			Codigo:      pt.Codigo,
-			Nombre:      pt.Nombre,
-			Descripcion: pt.Descripcion,
-		}
+		response[i] = pt.ToResponse()
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -76,10 +66,5 @@ func (h *PermisoTipoHandler) GetByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.PermisoTipoResponse{
-		ID:          permisoTipo.ID,
-		Codigo:      permisoTipo.Codigo,
-		Nombre:      permisoTipo.Nombre,
-		Descripcion: permisoTipo.Descripcion,
-	})
+	c.JSON(http.StatusOK, permisoTipo.ToResponse())
 }

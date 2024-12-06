@@ -18,6 +18,15 @@ func (PermisoTipo) TableName() string {
 	return "permiso_tipos"
 }
 
+func (pt *PermisoTipo) ToResponse() PermisoTipoResponse {
+	return PermisoTipoResponse{
+		ID:          pt.ID,
+		Codigo:      pt.Codigo,
+		Nombre:      pt.Nombre,
+		Descripcion: pt.Descripcion,
+	}
+}
+
 type CreatePermisoTipoRequest struct {
 	Codigo      string `json:"codigo" binding:"required"`
 	Nombre      string `json:"nombre" binding:"required"`

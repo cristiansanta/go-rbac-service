@@ -60,8 +60,19 @@ func (r *UserRepository) GetByID(id int) (*models.User, error) {
 
 func (r *UserRepository) Update(user *models.User) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		// Verificar si el correo ya existe para otro usuario
+		// Verificar si el documento ya existe para otro usuario
 		var count int64
+		if err := tx.Model(&models.User{}).
+			Where("(tipo_documento = ? AND numero_documento = ?) AND id != ?",
+				user.TipoDocumento, user.NumeroDocumento, user.ID).
+			Count(&count).Error; err != nil {
+			return err
+		}
+		if count > 0 {
+			return fmt.Errorf("ya existe un usuario con este documento")
+		}
+
+		// Verificar si el correo ya existe para otro usuario
 		if err := tx.Model(&models.User{}).
 			Where("correo = ? AND id != ?", user.Correo, user.ID).
 			Count(&count).Error; err != nil {
@@ -71,23 +82,37 @@ func (r *UserRepository) Update(user *models.User) error {
 			return fmt.Errorf("el correo ya está en uso por otro usuario")
 		}
 
-		// Actualizar solo los campos permitidos
+		// Validar que número de documento sean solo dígitos
+		if !regexp.MustCompile(`^\d+$`).MatchString(user.NumeroDocumento) {
+			return fmt.Errorf("el número de documento debe contener solo números")
+		}
+
+		// Validar que teléfono sean solo dígitos
+		if !regexp.MustCompile(`^\d+$`).MatchString(user.Telefono) {
+			return fmt.Errorf("el teléfono debe contener solo números")
+		}
+
+		// Actualizar todos los campos permitidos
 		result := tx.Model(user).Select(
 			"nombre",
 			"apellidos",
+			"tipo_documento",
+			"numero_documento",
 			"sede",
 			"regional",
 			"correo",
 			"telefono",
 			"id_rol",
 		).Updates(map[string]interface{}{
-			"nombre":    user.Nombre,
-			"apellidos": user.Apellidos,
-			"sede":      user.Sede,
-			"regional":  user.Regional,
-			"correo":    user.Correo,
-			"telefono":  user.Telefono,
-			"id_rol":    user.IdRol,
+			"nombre":           user.Nombre,
+			"apellidos":        user.Apellidos,
+			"tipo_documento":   user.TipoDocumento,
+			"numero_documento": user.NumeroDocumento,
+			"sede":             user.Sede,
+			"regional":         user.Regional,
+			"correo":           user.Correo,
+			"telefono":         user.Telefono,
+			"id_rol":           user.IdRol,
 		})
 
 		if result.Error != nil {
