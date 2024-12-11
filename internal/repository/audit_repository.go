@@ -6,114 +6,112 @@ import (
 	"gorm.io/gorm"
 )
 
-type AuditRepository struct {
+type RegistroAuditoriaRepository struct {
 	db *gorm.DB
 }
 
-func NewAuditRepository(db *gorm.DB) *AuditRepository {
-	return &AuditRepository{db: db}
+func NewRegistroAuditoriaRepository(db *gorm.DB) *RegistroAuditoriaRepository {
+	return &RegistroAuditoriaRepository{db: db}
 }
 
-// Create registra un nuevo log de auditoría
-func (r *AuditRepository) Create(log *models.AuditLog) error {
-	return r.db.Create(log).Error
+// Create registra un nuevo registro de auditoría
+func (r *RegistroAuditoriaRepository) Create(registro *models.RegistroAuditoria) error {
+	return r.db.Create(registro).Error
 }
 
-// GetAll obtiene todos los logs con paginación
-func (r *AuditRepository) GetAll(page, size int) ([]models.AuditLog, int64, error) {
-	var logs []models.AuditLog
+// GetAll obtiene todos los registros con paginación
+func (r *RegistroAuditoriaRepository) GetAll(page, size int) ([]models.RegistroAuditoria, int64, error) {
+	var registros []models.RegistroAuditoria
 	var total int64
 
 	offset := (page - 1) * size
 
-	// Obtener el total de registros
-	if err := r.db.Model(&models.AuditLog{}).Count(&total).Error; err != nil {
+	if err := r.db.Model(&models.RegistroAuditoria{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Obtener los registros paginados
 	if err := r.db.
 		Order("fecha_creacion DESC").
 		Offset(offset).
 		Limit(size).
-		Find(&logs).Error; err != nil {
+		Find(&registros).Error; err != nil {
 		return nil, 0, err
 	}
 
-	return logs, total, nil
+	return registros, total, nil
 }
 
-// GetByUserID obtiene los logs de un usuario específico
-func (r *AuditRepository) GetByUserID(userID int, page, size int) ([]models.AuditLog, int64, error) {
-	var logs []models.AuditLog
+// GetByIdUsuario obtiene los registros de un usuario específico
+func (r *RegistroAuditoriaRepository) GetByIdUsuario(idUsuario int, page, size int) ([]models.RegistroAuditoria, int64, error) {
+	var registros []models.RegistroAuditoria
 	var total int64
 
 	offset := (page - 1) * size
 
-	if err := r.db.Model(&models.AuditLog{}).
-		Where("user_id = ?", userID).
+	if err := r.db.Model(&models.RegistroAuditoria{}).
+		Where("id_usuario = ?", idUsuario).
 		Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	if err := r.db.
-		Where("user_id = ?", userID).
+		Where("id_usuario = ?", idUsuario).
 		Order("fecha_creacion DESC").
 		Offset(offset).
 		Limit(size).
-		Find(&logs).Error; err != nil {
+		Find(&registros).Error; err != nil {
 		return nil, 0, err
 	}
 
-	return logs, total, nil
+	return registros, total, nil
 }
 
-// GetByModuleName obtiene los logs de un módulo específico
-func (r *AuditRepository) GetByModuleName(moduleName string, page, size int) ([]models.AuditLog, int64, error) {
-	var logs []models.AuditLog
+// GetByNombreModulo obtiene los registros de un módulo específico
+func (r *RegistroAuditoriaRepository) GetByNombreModulo(nombreModulo string, page, size int) ([]models.RegistroAuditoria, int64, error) {
+	var registros []models.RegistroAuditoria
 	var total int64
 
 	offset := (page - 1) * size
 
-	if err := r.db.Model(&models.AuditLog{}).
-		Where("module_name = ?", moduleName).
+	if err := r.db.Model(&models.RegistroAuditoria{}).
+		Where("nombre_modulo = ?", nombreModulo).
 		Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	if err := r.db.
-		Where("module_name = ?", moduleName).
+		Where("nombre_modulo = ?", nombreModulo).
 		Order("fecha_creacion DESC").
 		Offset(offset).
 		Limit(size).
-		Find(&logs).Error; err != nil {
+		Find(&registros).Error; err != nil {
 		return nil, 0, err
 	}
 
-	return logs, total, nil
+	return registros, total, nil
 }
 
-// GetByDateRange obtiene logs dentro de un rango de fechas
-func (r *AuditRepository) GetByDateRange(startDate, endDate string, page, size int) ([]models.AuditLog, int64, error) {
-	var logs []models.AuditLog
+// GetByRangoFechas obtiene registros dentro de un rango de fechas
+func (r *RegistroAuditoriaRepository) GetByRangoFechas(fechaInicio, fechaFin string, page, size int) ([]models.RegistroAuditoria, int64, error) {
+	var registros []models.RegistroAuditoria
 	var total int64
 
 	offset := (page - 1) * size
 
-	if err := r.db.Model(&models.AuditLog{}).
-		Where("fecha_creacion BETWEEN ? AND ?", startDate, endDate).
+	if err := r.db.Model(&models.RegistroAuditoria{}).
+		Where("fecha_creacion BETWEEN ? AND ?", fechaInicio, fechaFin).
 		Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	if err := r.db.
-		Where("fecha_creacion BETWEEN ? AND ?", startDate, endDate).
+		Where("fecha_creacion BETWEEN ? AND ?", fechaInicio, fechaFin).
 		Order("fecha_creacion DESC").
 		Offset(offset).
 		Limit(size).
-		Find(&logs).Error; err != nil {
+		Find(&registros).Error; err != nil {
 		return nil, 0, err
 	}
 
-	return logs, total, nil
+	return registros, total, nil
 }

@@ -57,7 +57,7 @@ func SetupDatabase() (*gorm.DB, error) {
 		&models.RolModuloPermiso{},
 		&models.User{},
 		&models.TokenBlacklist{},
-		&models.AuditLog{}, // Nueva tabla
+		&models.RegistroAuditoria{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %v", err)
 	}

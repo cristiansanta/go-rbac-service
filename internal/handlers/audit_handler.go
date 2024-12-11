@@ -23,7 +23,7 @@ func (h *AuditHandler) GetLogs(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
 
-	logs, total, err := h.auditService.GetLogs(page, size)
+	logs, total, err := h.auditService.ObtenerRegistros(page, size)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -48,7 +48,7 @@ func (h *AuditHandler) GetLogsByUser(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
 
-	logs, total, err := h.auditService.GetLogsByUser(userID, page, size)
+	logs, total, err := h.auditService.ObtenerRegistrosPorUsuario(userID, page, size)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -68,7 +68,7 @@ func (h *AuditHandler) GetLogsByModule(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
 
-	logs, total, err := h.auditService.GetLogsByModule(moduleName, page, size)
+	logs, total, err := h.auditService.ObtenerRegistrosPorModulo(moduleName, page, size)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -95,7 +95,7 @@ func (h *AuditHandler) GetLogsByDateRange(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
 
-	logs, total, err := h.auditService.GetLogsByDateRange(startDate, endDate, page, size)
+	logs, total, err := h.auditService.ObtenerRegistrosPorRangoFechas(startDate, endDate, page, size)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

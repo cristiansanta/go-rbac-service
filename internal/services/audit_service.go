@@ -6,70 +6,70 @@ import (
 )
 
 type AuditService struct {
-	auditRepo *repository.AuditRepository
+	registroRepo *repository.RegistroAuditoriaRepository
 }
 
-func NewAuditService(auditRepo *repository.AuditRepository) *AuditService {
+func NewAuditService(registroRepo *repository.RegistroAuditoriaRepository) *AuditService {
 	return &AuditService{
-		auditRepo: auditRepo,
+		registroRepo: registroRepo,
 	}
 }
 
-func (s *AuditService) CreateLog(log *models.AuditLog) error {
-	return s.auditRepo.Create(log)
+func (s *AuditService) CreateRegistro(registro *models.RegistroAuditoria) error {
+	return s.registroRepo.Create(registro)
 }
 
-func (s *AuditService) GetLogs(page, size int) ([]models.AuditLogResponse, int64, error) {
-	logs, total, err := s.auditRepo.GetAll(page, size)
+func (s *AuditService) ObtenerRegistros(page, size int) ([]models.RegistroAuditoriaResponse, int64, error) {
+	registros, total, err := s.registroRepo.GetAll(page, size)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	response := make([]models.AuditLogResponse, len(logs))
-	for i, log := range logs {
-		response[i] = log.ToResponse()
+	response := make([]models.RegistroAuditoriaResponse, len(registros))
+	for i, registro := range registros {
+		response[i] = registro.ToResponse()
 	}
 
 	return response, total, nil
 }
 
-func (s *AuditService) GetLogsByUser(userID int, page, size int) ([]models.AuditLogResponse, int64, error) {
-	logs, total, err := s.auditRepo.GetByUserID(userID, page, size)
+func (s *AuditService) ObtenerRegistrosPorUsuario(idUsuario int, page, size int) ([]models.RegistroAuditoriaResponse, int64, error) {
+	registros, total, err := s.registroRepo.GetByIdUsuario(idUsuario, page, size)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	response := make([]models.AuditLogResponse, len(logs))
-	for i, log := range logs {
-		response[i] = log.ToResponse()
+	response := make([]models.RegistroAuditoriaResponse, len(registros))
+	for i, registro := range registros {
+		response[i] = registro.ToResponse()
 	}
 
 	return response, total, nil
 }
 
-func (s *AuditService) GetLogsByModule(moduleName string, page, size int) ([]models.AuditLogResponse, int64, error) {
-	logs, total, err := s.auditRepo.GetByModuleName(moduleName, page, size)
+func (s *AuditService) ObtenerRegistrosPorModulo(nombreModulo string, page, size int) ([]models.RegistroAuditoriaResponse, int64, error) {
+	registros, total, err := s.registroRepo.GetByNombreModulo(nombreModulo, page, size)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	response := make([]models.AuditLogResponse, len(logs))
-	for i, log := range logs {
-		response[i] = log.ToResponse()
+	response := make([]models.RegistroAuditoriaResponse, len(registros))
+	for i, registro := range registros {
+		response[i] = registro.ToResponse()
 	}
 
 	return response, total, nil
 }
 
-func (s *AuditService) GetLogsByDateRange(startDate, endDate string, page, size int) ([]models.AuditLogResponse, int64, error) {
-	logs, total, err := s.auditRepo.GetByDateRange(startDate, endDate, page, size)
+func (s *AuditService) ObtenerRegistrosPorRangoFechas(fechaInicio, fechaFin string, page, size int) ([]models.RegistroAuditoriaResponse, int64, error) {
+	registros, total, err := s.registroRepo.GetByRangoFechas(fechaInicio, fechaFin, page, size)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	response := make([]models.AuditLogResponse, len(logs))
-	for i, log := range logs {
-		response[i] = log.ToResponse()
+	response := make([]models.RegistroAuditoriaResponse, len(registros))
+	for i, registro := range registros {
+		response[i] = registro.ToResponse()
 	}
 
 	return response, total, nil

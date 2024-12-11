@@ -63,28 +63,28 @@ func AuditMiddleware(auditService *services.AuditService) gin.HandlerFunc {
 		}
 
 		// Crear el log de auditoría
-		auditLog := &models.AuditLog{
-			UserID:         userID,
-			Username:       username,
-			ModuleName:     moduleName,
-			Action:         action,
-			PermissionUsed: permissionUsed,
-			EntityType:     getEntityTypeFromPath(c.Request.URL.Path),
-			EntityID:       getEntityIDFromPath(c.Params),
-			OldValue:       oldValue,
-			NewValue:       newValue,
-			IPAddress:      c.ClientIP(),
-			UserAgent:      c.Request.UserAgent(),
-			StatusCode:     c.Writer.Status(),
-			RequestPath:    c.Request.URL.Path,
-			RequestMethod:  c.Request.Method,
-			FechaCreacion:  startTime,
+		auditLog := &models.RegistroAuditoria{
+			IdUsuario:       userID,
+			NombreUsuario:   username,
+			NombreModulo:    moduleName,
+			Accion:          action,
+			PermisoUsado:    permissionUsed,
+			TipoEntidad:     getEntityTypeFromPath(c.Request.URL.Path),
+			IdEntidad:       getEntityIDFromPath(c.Params),
+			ValorAnterior:   oldValue,
+			ValorNuevo:      newValue,
+			DireccionIP:     c.ClientIP(),
+			AgenteUsuario:   c.Request.UserAgent(),
+			CodigoEstado:    c.Writer.Status(),
+			RutaSolicitud:   c.Request.URL.Path,
+			MetodoSolicitud: c.Request.Method,
+			FechaCreacion:   startTime,
 		}
 
 		// Guardar el log de manera asíncrona
-		go func(auditLog *models.AuditLog) {
-			if err := auditService.CreateLog(auditLog); err != nil {
-				log.Printf("Error creating audit log: %v", err)
+		go func(registro *models.RegistroAuditoria) {
+			if err := auditService.CreateRegistro(registro); err != nil {
+				log.Printf("Error al crear registro de auditoría: %v", err)
 			}
 		}(auditLog)
 	}
@@ -102,15 +102,15 @@ func getModuleFromPath(path string) string {
 func getActionFromMethod(method string) string {
 	switch method {
 	case "GET":
-		return "READ"
+		return "LEER"
 	case "POST":
-		return "CREATE"
+		return "CREAR"
 	case "PUT", "PATCH":
-		return "UPDATE"
+		return "ACTUALIZAR"
 	case "DELETE":
-		return "DELETE"
+		return "ELIMINAR"
 	default:
-		return "UNKNOWN"
+		return "DESCONOCIDO"
 	}
 }
 
@@ -137,16 +137,16 @@ func getEntityTypeFromPath(path string) string {
 	if len(parts) > 1 {
 		switch parts[1] {
 		case "users":
-			return "User"
+			return "Usuario"
 		case "roles":
-			return "Role"
+			return "Rol"
 		case "modules":
-			return "Module"
+			return "Módulo"
 		case "permiso-tipos":
-			return "PermisoTipo"
+			return "TipoPermiso"
 		}
 	}
-	return "unknown"
+	return "desconocido"
 }
 
 func getEntityIDFromPath(params gin.Params) int {

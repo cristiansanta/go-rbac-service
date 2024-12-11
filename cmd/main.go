@@ -59,7 +59,7 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 	rolModuloPermisoRepo := repository.NewRolModuloPermisoRepository(db)
 	tokenBlacklistRepo := repository.NewTokenBlacklistRepository(db)
-	auditRepo := repository.NewAuditRepository(db)
+	registroAuditoriaRepo := repository.NewRegistroAuditoriaRepository(db)
 
 	// Iniciar la tarea de limpieza de tokens
 	cleanup := setupTokenCleanup(tokenBlacklistRepo)
@@ -67,7 +67,7 @@ func main() {
 
 	// Initialize services (SEGUNDO)
 	authService := services.NewAuthService(userRepo, tokenBlacklistRepo)
-	auditService := services.NewAuditService(auditRepo)
+	auditService := services.NewAuditService(registroAuditoriaRepo)
 
 	// Initialize middleware (TERCERO)
 	authMiddleware := middleware.NewAuthMiddleware(authService)

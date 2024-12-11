@@ -7,10 +7,8 @@ import (
 	"time"
 )
 
-// JsonMap tipo personalizado para almacenar JSON
 type JsonMap map[string]interface{}
 
-// Value implementa la interfaz driver.Valuer
 func (j JsonMap) Value() (driver.Value, error) {
 	if j == nil {
 		return nil, nil
@@ -18,7 +16,6 @@ func (j JsonMap) Value() (driver.Value, error) {
 	return json.Marshal(j)
 }
 
-// Scan implementa la interfaz sql.Scanner
 func (j *JsonMap) Scan(value interface{}) error {
 	if value == nil {
 		*j = nil
@@ -31,66 +28,63 @@ func (j *JsonMap) Scan(value interface{}) error {
 	return json.Unmarshal(bytes, &j)
 }
 
-// AuditLog modelo principal para logs de auditoría
-type AuditLog struct {
-	ID             int       `json:"id" gorm:"primaryKey;autoIncrement"`
-	UserID         int       `json:"user_id"`
-	Username       string    `json:"username"`
-	ModuleName     string    `json:"module_name"`
-	Action         string    `json:"action"`          // CREATE, READ, UPDATE, DELETE
-	PermissionUsed string    `json:"permission_used"` // R, W, X, D
-	EntityType     string    `json:"entity_type"`     // users, roles, modules, etc.
-	EntityID       int       `json:"entity_id"`
-	OldValue       JsonMap   `json:"old_value" gorm:"type:jsonb"`
-	NewValue       JsonMap   `json:"new_value" gorm:"type:jsonb"`
-	IPAddress      string    `json:"ip_address"`
-	UserAgent      string    `json:"user_agent"`
-	StatusCode     int       `json:"status_code"`
-	RequestPath    string    `json:"request_path"`
-	RequestMethod  string    `json:"request_method"`
-	FechaCreacion  time.Time `json:"fecha_creacion" gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
+type RegistroAuditoria struct {
+	ID              int       `json:"id" gorm:"primaryKey;autoIncrement"`
+	IdUsuario       int       `json:"id_usuario"`
+	NombreUsuario   string    `json:"nombre_usuario"`
+	NombreModulo    string    `json:"nombre_modulo"`
+	Accion          string    `json:"accion"`        // CREATE, READ, UPDATE, DELETE
+	PermisoUsado    string    `json:"permiso_usado"` // R, W, X, D
+	TipoEntidad     string    `json:"tipo_entidad"`  // users, roles, modules, etc.
+	IdEntidad       int       `json:"id_entidad"`
+	ValorAnterior   JsonMap   `json:"valor_anterior" gorm:"type:jsonb"`
+	ValorNuevo      JsonMap   `json:"valor_nuevo" gorm:"type:jsonb"`
+	DireccionIP     string    `json:"direccion_ip"`
+	AgenteUsuario   string    `json:"agente_usuario"`
+	CodigoEstado    int       `json:"codigo_estado"`
+	RutaSolicitud   string    `json:"ruta_solicitud"`
+	MetodoSolicitud string    `json:"metodo_solicitud"`
+	FechaCreacion   time.Time `json:"fecha_creacion" gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
 }
 
-func (AuditLog) TableName() string {
-	return "audit_logs"
+func (RegistroAuditoria) TableName() string {
+	return "registros_auditoria"
 }
 
-// AuditLogResponse estructura para respuestas API
-type AuditLogResponse struct {
-	ID             int       `json:"id"`
-	UserID         int       `json:"user_id"`
-	Username       string    `json:"username"`
-	ModuleName     string    `json:"module_name"`
-	Action         string    `json:"action"`
-	PermissionUsed string    `json:"permission_used"`
-	EntityType     string    `json:"entity_type"`
-	EntityID       int       `json:"entity_id"`
-	OldValue       JsonMap   `json:"old_value,omitempty"`
-	NewValue       JsonMap   `json:"new_value,omitempty"`
-	IPAddress      string    `json:"ip_address"`
-	StatusCode     int       `json:"status_code"`
-	RequestPath    string    `json:"request_path"`
-	RequestMethod  string    `json:"request_method"`
-	FechaCreacion  time.Time `json:"fecha_creacion"`
+type RegistroAuditoriaResponse struct {
+	ID              int       `json:"id"`
+	IdUsuario       int       `json:"id_usuario"`
+	NombreUsuario   string    `json:"nombre_usuario"`
+	NombreModulo    string    `json:"nombre_modulo"`
+	Accion          string    `json:"accion"`
+	PermisoUsado    string    `json:"permiso_usado"`
+	TipoEntidad     string    `json:"tipo_entidad"`
+	IdEntidad       int       `json:"id_entidad"`
+	ValorAnterior   JsonMap   `json:"valor_anterior,omitempty"`
+	ValorNuevo      JsonMap   `json:"valor_nuevo,omitempty"`
+	DireccionIP     string    `json:"direccion_ip"`
+	CodigoEstado    int       `json:"codigo_estado"`
+	RutaSolicitud   string    `json:"ruta_solicitud"`
+	MetodoSolicitud string    `json:"metodo_solicitud"`
+	FechaCreacion   time.Time `json:"fecha_creacion"`
 }
 
-// ToResponse convierte AuditLog a AuditLogResponse
-func (a *AuditLog) ToResponse() AuditLogResponse {
-	return AuditLogResponse{
-		ID:             a.ID,
-		UserID:         a.UserID,
-		Username:       a.Username,
-		ModuleName:     a.ModuleName,
-		Action:         a.Action,
-		PermissionUsed: a.PermissionUsed,
-		EntityType:     a.EntityType,
-		EntityID:       a.EntityID,
-		OldValue:       a.OldValue,
-		NewValue:       a.NewValue,
-		IPAddress:      a.IPAddress,
-		StatusCode:     a.StatusCode,
-		RequestPath:    a.RequestPath,
-		RequestMethod:  a.RequestMethod,
-		FechaCreacion:  a.FechaCreacion,
+func (r *RegistroAuditoria) ToResponse() RegistroAuditoriaResponse {
+	return RegistroAuditoriaResponse{
+		ID:              r.ID,
+		IdUsuario:       r.IdUsuario,
+		NombreUsuario:   r.NombreUsuario,
+		NombreModulo:    r.NombreModulo,
+		Accion:          r.Accion,
+		PermisoUsado:    r.PermisoUsado,
+		TipoEntidad:     r.TipoEntidad,
+		IdEntidad:       r.IdEntidad,
+		ValorAnterior:   r.ValorAnterior,
+		ValorNuevo:      r.ValorNuevo,
+		DireccionIP:     r.DireccionIP,
+		CodigoEstado:    r.CodigoEstado,
+		RutaSolicitud:   r.RutaSolicitud,
+		MetodoSolicitud: r.MetodoSolicitud,
+		FechaCreacion:   r.FechaCreacion,
 	}
 }
