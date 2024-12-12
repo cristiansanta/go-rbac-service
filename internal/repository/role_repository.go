@@ -1,8 +1,10 @@
 package repository
 
 import (
+	"auth-service/internal/constants"
 	"auth-service/internal/models"
 	"fmt"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -67,6 +69,11 @@ func (r *RoleRepository) AssignModulePermission(roleID, moduleID int, permisoTip
 		var role models.Role
 		if err := tx.First(&role, roleID).Error; err != nil {
 			return fmt.Errorf("rol no encontrado: %v", err)
+		}
+
+		// Verificar si es SuperAdmin
+		if strings.ToUpper(role.Nombre) == constants.RoleSuperAdmin {
+			return fmt.Errorf("no se pueden modificar los permisos del rol SuperAdmin")
 		}
 
 		// Verificar módulo

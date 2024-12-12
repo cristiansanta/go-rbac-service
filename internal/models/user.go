@@ -91,6 +91,23 @@ type UserResponse struct {
 	FechaActualizacion time.Time `json:"fecha_actualizacion"`
 }
 
+func (u *User) ToResponse() UserResponse {
+	return UserResponse{
+		ID:                 u.ID,
+		Nombre:             u.Nombre,
+		Apellidos:          u.Apellidos,
+		TipoDocumento:      u.TipoDocumento,
+		NumeroDocumento:    u.NumeroDocumento,
+		Sede:               u.Sede,
+		IdRol:              u.IdRol,
+		Role:               u.Role,
+		Regional:           u.Regional,
+		Correo:             u.Correo,
+		Telefono:           u.Telefono,
+		FechaCreacion:      u.FechaCreacion,
+		FechaActualizacion: u.FechaActualizacion,
+	}
+}
 func (u *User) IsSuperAdmin() bool {
 	return u.Role.Nombre == constants.RoleSuperAdmin
 }

@@ -116,25 +116,12 @@ func (h *UserHandler) GetAll(c *gin.Context) {
 
 	response := make([]models.UserResponse, len(users))
 	for i, user := range users {
-		response[i] = models.UserResponse{
-			ID:                 user.ID,
-			Nombre:             user.Nombre,
-			Apellidos:          user.Apellidos,
-			TipoDocumento:      user.TipoDocumento,
-			NumeroDocumento:    user.NumeroDocumento,
-			Sede:               user.Sede,
-			IdRol:              user.IdRol,
-			Role:               user.Role,
-			Regional:           user.Regional,
-			Correo:             user.Correo,
-			Telefono:           user.Telefono,
-			FechaCreacion:      user.FechaCreacion,
-			FechaActualizacion: user.FechaActualizacion,
-		}
+		response[i] = user.ToResponse()
 	}
 
 	c.JSON(http.StatusOK, response)
 }
+
 func (h *UserHandler) GetByID(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -148,21 +135,7 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.UserResponse{
-		ID:                 user.ID,
-		Nombre:             user.Nombre,
-		Apellidos:          user.Apellidos,
-		TipoDocumento:      user.TipoDocumento,
-		NumeroDocumento:    user.NumeroDocumento,
-		Sede:               user.Sede,
-		IdRol:              user.IdRol,
-		Role:               user.Role,
-		Regional:           user.Regional,
-		Correo:             user.Correo,
-		Telefono:           user.Telefono,
-		FechaCreacion:      user.FechaCreacion,
-		FechaActualizacion: user.FechaActualizacion,
-	})
+	c.JSON(http.StatusOK, user.ToResponse())
 }
 
 func (h *UserHandler) Update(c *gin.Context) {

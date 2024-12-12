@@ -17,32 +17,6 @@ func NewModuleHandler(repo *repository.ModuleRepository) *ModuleHandler {
 	return &ModuleHandler{repo: repo}
 }
 
-func (h *ModuleHandler) Create(c *gin.Context) {
-	var req models.CreateModuleRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	module := &models.Module{
-		Nombre:      req.Nombre,
-		Descripcion: req.Descripcion,
-	}
-
-	if err := h.repo.Create(module); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusCreated, models.ModuleResponse{
-		ID:                 module.ID,
-		Nombre:             module.Nombre,
-		Descripcion:        module.Descripcion,
-		FechaCreacion:      module.FechaCreacion,
-		FechaActualizacion: module.FechaActualizacion,
-	})
-}
-
 func (h *ModuleHandler) GetAll(c *gin.Context) {
 	modules, err := h.repo.GetAll()
 	if err != nil {
@@ -52,13 +26,7 @@ func (h *ModuleHandler) GetAll(c *gin.Context) {
 
 	response := make([]models.ModuleResponse, len(modules))
 	for i, module := range modules {
-		response[i] = models.ModuleResponse{
-			ID:                 module.ID,
-			Nombre:             module.Nombre,
-			Descripcion:        module.Descripcion,
-			FechaCreacion:      module.FechaCreacion,
-			FechaActualizacion: module.FechaActualizacion,
-		}
+		response[i] = module.ToResponse()
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -78,6 +46,26 @@ func (h *ModuleHandler) GetModuleWithPermissions(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, moduleWithPermissions)
+}
+
+func (h *ModuleHandler) Create(c *gin.Context) {
+	var req models.CreateModuleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	module := &models.Module{
+		Nombre:      req.Nombre,
+		Descripcion: req.Descripcion,
+	}
+
+	if err := h.repo.Create(module); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, module.ToResponse())
 }
 
 func (h *ModuleHandler) AssignPermissions(c *gin.Context) {

@@ -55,12 +55,7 @@ func (h *RoleHandler) GetAll(c *gin.Context) {
 
 	response := make([]models.RoleResponse, len(roles))
 	for i, role := range roles {
-		response[i] = models.RoleResponse{
-			ID:                 role.ID,
-			Nombre:             role.Nombre,
-			FechaCreacion:      role.FechaCreacion,
-			FechaActualizacion: role.FechaActualizacion,
-		}
+		response[i] = role.ToResponse()
 	}
 
 	c.JSON(http.StatusOK, response)

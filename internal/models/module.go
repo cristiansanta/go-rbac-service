@@ -46,3 +46,26 @@ type AssignModulePermissionsRequest struct {
 	ModuloID       int   `json:"modulo_id" binding:"required"`
 	PermisoTipoIDs []int `json:"permiso_tipo_ids" binding:"required"`
 }
+
+func (m *Module) ToResponse() ModuleResponse {
+	return ModuleResponse{
+		ID:                 m.ID,
+		Nombre:             m.Nombre,
+		Descripcion:        m.Descripcion,
+		FechaCreacion:      m.FechaCreacion,
+		FechaActualizacion: m.FechaActualizacion,
+		FechaEliminacion:   m.FechaEliminacion,
+	}
+}
+
+func (m *Module) ToResponseWithPermissions() ModuleWithPermissions {
+	return ModuleWithPermissions{
+		ID:                 m.ID,
+		Nombre:             m.Nombre,
+		Descripcion:        m.Descripcion,
+		Permisos:           m.Permisos,
+		FechaCreacion:      m.FechaCreacion,
+		FechaActualizacion: m.FechaActualizacion,
+		FechaEliminacion:   m.FechaEliminacion,
+	}
+}

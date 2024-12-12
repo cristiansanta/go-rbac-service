@@ -32,3 +32,13 @@ type AssignRolePermissionsRequest struct {
 	ModuloID      int   `json:"modulo_id" binding:"required"`
 	PermisoTipoID []int `json:"permiso_tipo_id" binding:"required"`
 }
+
+func (r *Role) ToResponse() RoleResponse {
+	return RoleResponse{
+		ID:                 r.ID,
+		Nombre:             r.Nombre,
+		Descripcion:        r.Descripcion,
+		FechaCreacion:      r.FechaCreacion,
+		FechaActualizacion: r.FechaActualizacion,
+	}
+}
