@@ -5,6 +5,7 @@ import (
 	"auth-service/internal/repository"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -68,7 +69,16 @@ func (h *RoleHandler) AssignModulePermission(c *gin.Context) {
 		return
 	}
 
-	if err := h.repo.AssignModulePermission(req.RoleID, req.ModuloID, req.PermisoTipoID); err != nil {
+	err := h.repo.AssignModulePermission(req.RoleID, req.ModuloID, req.PermisoTipoID)
+	if err != nil {
+		// Verificar si el error es sobre permisos no disponibles
+		if strings.Contains(err.Error(), "permisos no están disponibles") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":   err.Error(),
+				"message": "Solo se pueden asignar permisos que estén disponibles en el módulo",
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

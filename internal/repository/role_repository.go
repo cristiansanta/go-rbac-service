@@ -78,17 +78,26 @@ func (r *RoleRepository) AssignModulePermission(roleID, moduleID int, permisoTip
 
 		// Verificar módulo
 		var module models.Module
-		if err := tx.First(&module, moduleID).Error; err != nil {
+		if err := tx.Preload("Permisos").First(&module, moduleID).Error; err != nil {
 			return fmt.Errorf("módulo no encontrado: %v", err)
 		}
 
-		// Verificar permisos
-		var count int64
-		if err := tx.Model(&models.PermisoTipo{}).Where("id IN ?", permisoTipoIDs).Count(&count).Error; err != nil {
-			return err
+		// Crear un mapa de los permisos disponibles en el módulo
+		moduloPermisos := make(map[int]bool)
+		for _, permiso := range module.Permisos {
+			moduloPermisos[permiso.ID] = true
 		}
-		if int(count) != len(permisoTipoIDs) {
-			return fmt.Errorf("algunos permisos no existen")
+
+		// Verificar que todos los permisos solicitados estén disponibles en el módulo
+		var permisosNoDisponibles []int
+		for _, permisoID := range permisoTipoIDs {
+			if !moduloPermisos[permisoID] {
+				permisosNoDisponibles = append(permisosNoDisponibles, permisoID)
+			}
+		}
+
+		if len(permisosNoDisponibles) > 0 {
+			return fmt.Errorf("los siguientes permisos no están disponibles en el módulo: %v", permisosNoDisponibles)
 		}
 
 		// Eliminar permisos existentes

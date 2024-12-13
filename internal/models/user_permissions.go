@@ -28,3 +28,33 @@ type UsersPermissionsListResponse struct {
 	Total    int                       `json:"total"`
 	Usuarios []UserPermissionsResponse `json:"usuarios"`
 }
+
+func (r *RolePermissions) ToResponse() RolePermissions {
+	return RolePermissions{
+		ID:             r.ID,
+		Nombre:         r.Nombre,
+		ModuloPermisos: r.ModuloPermisos,
+	}
+}
+
+func (mp *ModuloPermissions) ToResponse() ModuloPermissions {
+	return ModuloPermissions{
+		ID:       mp.ID,
+		Nombre:   mp.Nombre,
+		Permisos: mp.Permisos,
+	}
+}
+
+func (up *UserPermissionsResponse) ToResponse() UserPermissionsResponse {
+	return UserPermissionsResponse{
+		ID:              up.ID,
+		Nombre:          up.Nombre,
+		Apellidos:       up.Apellidos,
+		TipoDocumento:   up.TipoDocumento,
+		NumeroDocumento: up.NumeroDocumento,
+		Correo:          up.Correo,
+		Sede:            up.Sede,
+		Regional:        up.Regional,
+		Role:            up.Role.ToResponse(),
+	}
+}

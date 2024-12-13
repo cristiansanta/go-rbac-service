@@ -19,27 +19,40 @@ func (r *RolModuloPermisoRepository) Create(rolModuloPermiso *models.RolModuloPe
 	return r.db.Create(rolModuloPermiso).Error
 }
 
-func (r *RolModuloPermisoRepository) GetAll() ([]models.RolModuloPermiso, error) {
+func (r *RolModuloPermisoRepository) GetAll() ([]models.RolModuloPermisoResponse, error) {
 	var rolModuloPermisos []models.RolModuloPermiso
 	err := r.db.Where("fecha_eliminacion IS NULL").
 		Preload("Role").
 		Preload("Modulo", "fecha_eliminacion IS NULL").
 		Preload("PermisoTipo").
 		Find(&rolModuloPermisos).Error
-	return rolModuloPermisos, err
+
+	if err != nil {
+		return nil, err
+	}
+
+	response := make([]models.RolModuloPermisoResponse, len(rolModuloPermisos))
+	for i, rmp := range rolModuloPermisos {
+		response[i] = rmp.ToResponse()
+	}
+
+	return response, nil
 }
 
-func (r *RolModuloPermisoRepository) GetByID(id int) (*models.RolModuloPermiso, error) {
+func (r *RolModuloPermisoRepository) GetByID(id int) (*models.RolModuloPermisoResponse, error) {
 	var rolModuloPermiso models.RolModuloPermiso
 	err := r.db.Where("fecha_eliminacion IS NULL").
 		Preload("Role").
 		Preload("Modulo", "fecha_eliminacion IS NULL").
 		Preload("PermisoTipo").
 		First(&rolModuloPermiso, id).Error
+
 	if err != nil {
 		return nil, err
 	}
-	return &rolModuloPermiso, nil
+
+	response := rolModuloPermiso.ToResponse()
+	return &response, nil
 }
 
 func (r *RolModuloPermisoRepository) GetByRoleID(roleID int) ([]models.RolModuloPermiso, error) {

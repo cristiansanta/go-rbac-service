@@ -69,3 +69,19 @@ func (m *Module) ToResponseWithPermissions() ModuleWithPermissions {
 		FechaEliminacion:   m.FechaEliminacion,
 	}
 }
+func (m *Module) HasPermission(permisoID int) bool {
+	for _, permiso := range m.Permisos {
+		if permiso.ID == permisoID {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *Module) GetAvailablePermissions() []int {
+	permisos := make([]int, len(m.Permisos))
+	for i, permiso := range m.Permisos {
+		permisos[i] = permiso.ID
+	}
+	return permisos
+}

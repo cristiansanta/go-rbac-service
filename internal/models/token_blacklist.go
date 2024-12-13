@@ -11,3 +11,15 @@ type TokenBlacklist struct {
 func (TokenBlacklist) TableName() string {
 	return "token_blacklist"
 }
+
+type TokenBlacklistResponse struct {
+	ID        int       `json:"id"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+func (t *TokenBlacklist) ToResponse() TokenBlacklistResponse {
+	return TokenBlacklistResponse{
+		ID:        t.ID,
+		ExpiresAt: t.ExpiresAt,
+	}
+}

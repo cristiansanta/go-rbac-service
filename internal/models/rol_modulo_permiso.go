@@ -30,3 +30,16 @@ type RolModuloPermisoResponse struct {
 	Modulo        ModuleResponse `json:"modulo"`
 	PermisoTipo   PermisoTipo    `json:"permiso_tipo"`
 }
+
+func (rmp *RolModuloPermiso) ToResponse() RolModuloPermisoResponse {
+	return RolModuloPermisoResponse{
+		ID:            rmp.ID,
+		IdRol:         rmp.IdRol,
+		IdModulo:      rmp.IdModulo,
+		IdPermisoTipo: rmp.IdPermisoTipo,
+		FechaCreacion: rmp.FechaCreacion,
+		Role:          rmp.Role,
+		Modulo:        rmp.Modulo.ToResponse(),
+		PermisoTipo:   rmp.PermisoTipo,
+	}
+}
