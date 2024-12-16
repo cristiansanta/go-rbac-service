@@ -1,8 +1,10 @@
+// internal/repository/module_repository.go
 package repository
 
 import (
 	"auth-service/internal/models"
 	"fmt"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -16,21 +18,82 @@ func NewModuleRepository(db *gorm.DB) *ModuleRepository {
 	return &ModuleRepository{db: db}
 }
 
-// repository/module_repository.go
-func (r *ModuleRepository) Create(module *models.Module) error {
-	var exists bool
-	if err := r.db.Model(&models.Module{}).
-		Where("LOWER(nombre) = LOWER(?)", module.Nombre).
-		Select("count(*) > 0").
-		Scan(&exists).Error; err != nil {
-		return err
+// Método para crear múltiples módulos
+func (r *ModuleRepository) CrearModulos(modulosInfo []models.InfoModulo) ([]models.Module, error) {
+	var modulosCreados []models.Module
+
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		// Obtener todos los permisos base
+		var permisos []models.PermisoTipo
+		if err := tx.Find(&permisos).Error; err != nil {
+			return fmt.Errorf("error obteniendo permisos base: %v", err)
+		}
+
+		if len(permisos) != 4 {
+			return fmt.Errorf("no se encontraron los 4 permisos base necesarios")
+		}
+
+		// Verificar nombres duplicados (case insensitive)
+		for i, modulo := range modulosInfo {
+			// Verificar contra módulos existentes en la base de datos
+			var exists bool
+			if err := tx.Model(&models.Module{}).
+				Where("LOWER(nombre) = LOWER(?)", modulo.Nombre).
+				Where("fecha_eliminacion IS NULL").
+				Select("count(*) > 0").
+				Scan(&exists).Error; err != nil {
+				return err
+			}
+			if exists {
+				return fmt.Errorf("ya existe un módulo con el nombre: %s", modulo.Nombre)
+			}
+
+			// Verificar contra otros módulos en el mismo request
+			for j := 0; j < i; j++ {
+				if strings.EqualFold(modulosInfo[j].Nombre, modulo.Nombre) {
+					return fmt.Errorf("módulos duplicados en la petición: %s", modulo.Nombre)
+				}
+			}
+		}
+
+		// Crear los módulos y asignar permisos
+		for _, moduloInfo := range modulosInfo {
+			modulo := models.Module{
+				Nombre:      moduloInfo.Nombre,
+				Descripcion: moduloInfo.Descripcion,
+			}
+
+			if err := tx.Create(&modulo).Error; err != nil {
+				return fmt.Errorf("error creando módulo %s: %v", moduloInfo.Nombre, err)
+			}
+
+			// Asignar los permisos base
+			for _, permiso := range permisos {
+				moduloPermiso := models.ModuloPermiso{
+					IdModulo:      modulo.ID,
+					IdPermisoTipo: permiso.ID,
+				}
+				if err := tx.Create(&moduloPermiso).Error; err != nil {
+					return fmt.Errorf("error asignando permiso al módulo %s: %v", modulo.Nombre, err)
+				}
+			}
+
+			// Cargar el módulo con sus permisos para la respuesta
+			if err := tx.Preload("Permisos").First(&modulo, modulo.ID).Error; err != nil {
+				return fmt.Errorf("error cargando módulo con permisos: %v", err)
+			}
+
+			modulosCreados = append(modulosCreados, modulo)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
 	}
 
-	if exists {
-		return fmt.Errorf("ya existe un módulo con este nombre")
-	}
-
-	return r.db.Create(module).Error
+	return modulosCreados, nil
 }
 
 func (r *ModuleRepository) GetAll() ([]models.Module, error) {
@@ -39,22 +102,31 @@ func (r *ModuleRepository) GetAll() ([]models.Module, error) {
 	return modules, err
 }
 
-func (r *ModuleRepository) GetByID(id int) (*models.Module, error) {
+func (r *ModuleRepository) GetModuleWithPermissions(moduleID int) (*models.ModuleWithPermissions, error) {
 	var module models.Module
-	err := r.db.Where("fecha_eliminacion IS NULL").First(&module, id).Error
+	err := r.db.Where("fecha_eliminacion IS NULL").
+		Preload("Permisos").
+		First(&module, moduleID).Error
 	if err != nil {
 		return nil, err
 	}
-	return &module, nil
-}
 
-func (r *ModuleRepository) Update(module *models.Module) error {
-	return r.db.Save(module).Error
+	return &models.ModuleWithPermissions{
+		ID:                 module.ID,
+		Nombre:             module.Nombre,
+		Descripcion:        module.Descripcion,
+		Permisos:           module.Permisos,
+		FechaCreacion:      module.FechaCreacion,
+		FechaActualizacion: module.FechaActualizacion,
+		FechaEliminacion:   module.FechaEliminacion,
+	}, nil
 }
 
 func (r *ModuleRepository) Delete(id int) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		// Primero, verificar si el módulo existe y no está ya eliminado
+		now := time.Now()
+
+		// Verificar si el módulo existe y no está ya eliminado
 		var module models.Module
 		if err := tx.Where("id = ? AND fecha_eliminacion IS NULL", id).First(&module).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
@@ -63,22 +135,18 @@ func (r *ModuleRepository) Delete(id int) error {
 			return err
 		}
 
-		// Obtener la fecha actual
-		now := time.Now()
-
 		// Actualizar fecha_eliminacion del módulo
 		if err := tx.Model(&module).Update("fecha_eliminacion", now).Error; err != nil {
 			return err
 		}
 
-		// Marcar como eliminados los registros relacionados en rol_modulo_permisos
+		// Marcar como eliminados los registros relacionados
 		if err := tx.Model(&models.RolModuloPermiso{}).
 			Where("id_modulo = ?", id).
 			Update("fecha_eliminacion", now).Error; err != nil {
 			return err
 		}
 
-		// Marcar como eliminados los registros relacionados en modulo_permisos
 		if err := tx.Model(&models.ModuloPermiso{}).
 			Where("id_modulo = ?", id).
 			Update("fecha_eliminacion", now).Error; err != nil {
@@ -89,6 +157,48 @@ func (r *ModuleRepository) Delete(id int) error {
 	})
 }
 
+func (r *ModuleRepository) Restore(id int) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		var module models.Module
+		if err := tx.Unscoped().First(&module, id).Error; err != nil {
+			return fmt.Errorf("módulo no encontrado")
+		}
+
+		if module.FechaEliminacion == nil {
+			return fmt.Errorf("el módulo no está eliminado")
+		}
+
+		// Restaurar el módulo
+		if err := tx.Model(&module).Update("fecha_eliminacion", nil).Error; err != nil {
+			return err
+		}
+
+		// Restaurar registros relacionados
+		if err := tx.Model(&models.RolModuloPermiso{}).
+			Where("id_modulo = ?", id).
+			Update("fecha_eliminacion", nil).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Model(&models.ModuloPermiso{}).
+			Where("id_modulo = ?", id).
+			Update("fecha_eliminacion", nil).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+func (r *ModuleRepository) GetDeletedModules() ([]models.Module, error) {
+	var modules []models.Module
+	err := r.db.Where("fecha_eliminacion IS NOT NULL").
+		Order("fecha_eliminacion DESC").
+		Find(&modules).Error
+	return modules, err
+}
+
+// AssignPermissions asigna permisos específicos a un módulo
 func (r *ModuleRepository) AssignPermissions(moduleID int, permisoTipoIDs []int) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		// Verificar que el módulo existe
@@ -122,52 +232,24 @@ func (r *ModuleRepository) AssignPermissions(moduleID int, permisoTipoIDs []int)
 			}
 		}
 
-		// Eliminar asignaciones de roles que ya no son válidas
-		var validPermisos []models.RolModuloPermiso
-		err := tx.Where("id_modulo = ? AND id_permiso_tipo NOT IN ?", moduleID, permisoTipoIDs).
-			Delete(&models.RolModuloPermiso{}).Error
-		if err != nil {
-			return err
-		}
-
-		return tx.Where("id_modulo = ?", moduleID).
-			Preload("Modulo").
-			Preload("PermisoTipo").
-			Find(&validPermisos).Error
+		return nil
 	})
 }
 
-func (r *ModuleRepository) GetModuleWithPermissions(moduleID int) (*models.ModuleWithPermissions, error) {
-	var module models.Module
-	err := r.db.Where("fecha_eliminacion IS NULL").
-		Preload("Permisos").
-		First(&module, moduleID).Error
-	if err != nil {
-		return nil, err
-	}
-
-	return &models.ModuleWithPermissions{
-		ID:                 module.ID,
-		Nombre:             module.Nombre,
-		Descripcion:        module.Descripcion,
-		Permisos:           module.Permisos,
-		FechaCreacion:      module.FechaCreacion,
-		FechaActualizacion: module.FechaActualizacion,
-		FechaEliminacion:   module.FechaEliminacion,
-	}, nil
-}
-
+// RemovePermission elimina un permiso específico de un módulo
 func (r *ModuleRepository) RemovePermission(moduleID int, permisoTipoID int) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		// Primero eliminamos las asignaciones de roles que usan este permiso
-		if err := tx.Where(
-			"id_modulo = ? AND id_permiso_tipo = ?",
-			moduleID, permisoTipoID,
-		).Delete(&models.RolModuloPermiso{}).Error; err != nil {
-			return err
+		// Verificar que el módulo existe
+		if err := tx.First(&models.Module{}, moduleID).Error; err != nil {
+			return fmt.Errorf("módulo no encontrado: %v", err)
 		}
 
-		// Luego eliminamos el permiso del módulo
+		// Verificar que el permiso existe
+		if err := tx.First(&models.PermisoTipo{}, permisoTipoID).Error; err != nil {
+			return fmt.Errorf("permiso no encontrado: %v", err)
+		}
+
+		// Eliminar la relación
 		result := tx.Where(
 			"id_modulo = ? AND id_permiso_tipo = ?",
 			moduleID, permisoTipoID,
@@ -183,45 +265,4 @@ func (r *ModuleRepository) RemovePermission(moduleID int, permisoTipoID int) err
 
 		return nil
 	})
-}
-func (r *ModuleRepository) Restore(id int) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		// Verificar si el módulo existe y está eliminado
-		var module models.Module
-		if err := tx.Unscoped().First(&module, id).Error; err != nil {
-			return fmt.Errorf("módulo no encontrado")
-		}
-
-		if module.FechaEliminacion == nil {
-			return fmt.Errorf("el módulo no está eliminado")
-		}
-
-		// Restaurar el módulo
-		if err := tx.Model(&module).Update("fecha_eliminacion", nil).Error; err != nil {
-			return err
-		}
-
-		// Restaurar registros relacionados en rol_modulo_permisos
-		if err := tx.Model(&models.RolModuloPermiso{}).
-			Where("id_modulo = ?", id).
-			Update("fecha_eliminacion", nil).Error; err != nil {
-			return err
-		}
-
-		// Restaurar registros relacionados en modulo_permisos
-		if err := tx.Model(&models.ModuloPermiso{}).
-			Where("id_modulo = ?", id).
-			Update("fecha_eliminacion", nil).Error; err != nil {
-			return err
-		}
-
-		return nil
-	})
-}
-func (r *ModuleRepository) GetDeletedModules() ([]models.Module, error) {
-	var modules []models.Module
-	err := r.db.Where("fecha_eliminacion IS NOT NULL").
-		Order("fecha_eliminacion DESC").
-		Find(&modules).Error
-	return modules, err
 }

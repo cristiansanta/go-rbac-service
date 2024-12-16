@@ -1,8 +1,19 @@
+// internal/models/module.go
 package models
 
 import (
 	"time"
 )
+
+// Estructura para recibir el JSON de creación masiva
+type CrearModulosRequest struct {
+	Modules []InfoModulo `json:"modules" binding:"required,dive"`
+}
+
+type InfoModulo struct {
+	Nombre      string `json:"nombre" binding:"required"`
+	Descripcion string `json:"descripcion"`
+}
 
 type Module struct {
 	ID                 int           `json:"id" gorm:"primaryKey;autoIncrement"`
@@ -10,7 +21,7 @@ type Module struct {
 	Descripcion        string        `json:"descripcion" gorm:"type:text"`
 	FechaCreacion      time.Time     `json:"fecha_creacion" gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
 	FechaActualizacion time.Time     `json:"fecha_actualizacion" gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
-	FechaEliminacion   *time.Time    `json:"fecha_eliminacion" gorm:"type:timestamp;default:null"` // Nuevo campo
+	FechaEliminacion   *time.Time    `json:"fecha_eliminacion" gorm:"type:timestamp;default:null"`
 	Permisos           []PermisoTipo `json:"permisos,omitempty" gorm:"many2many:modulo_permisos;foreignKey:ID;joinForeignKey:id_modulo;References:ID;joinReferences:id_permiso_tipo"`
 }
 
@@ -18,18 +29,14 @@ func (Module) TableName() string {
 	return "modulos"
 }
 
-type CreateModuleRequest struct {
-	Nombre      string `json:"nombre" binding:"required"`
-	Descripcion string `json:"descripcion"`
-}
-
 type ModuleResponse struct {
-	ID                 int        `json:"id"`
-	Nombre             string     `json:"nombre"`
-	Descripcion        string     `json:"descripcion"`
-	FechaCreacion      time.Time  `json:"fecha_creacion"`
-	FechaActualizacion time.Time  `json:"fecha_actualizacion"`
-	FechaEliminacion   *time.Time `json:"fecha_eliminacion,omitempty"`
+	ID                 int                   `json:"id"`
+	Nombre             string                `json:"nombre"`
+	Descripcion        string                `json:"descripcion"`
+	Permisos           []PermisoTipoResponse `json:"permisos,omitempty"`
+	FechaCreacion      time.Time             `json:"fecha_creacion"`
+	FechaActualizacion time.Time             `json:"fecha_actualizacion"`
+	FechaEliminacion   *time.Time            `json:"fecha_eliminacion,omitempty"`
 }
 
 type ModuleWithPermissions struct {
@@ -48,10 +55,16 @@ type AssignModulePermissionsRequest struct {
 }
 
 func (m *Module) ToResponse() ModuleResponse {
+	permisosResponse := make([]PermisoTipoResponse, len(m.Permisos))
+	for i, permiso := range m.Permisos {
+		permisosResponse[i] = permiso.ToResponse()
+	}
+
 	return ModuleResponse{
 		ID:                 m.ID,
 		Nombre:             m.Nombre,
 		Descripcion:        m.Descripcion,
+		Permisos:           permisosResponse,
 		FechaCreacion:      m.FechaCreacion,
 		FechaActualizacion: m.FechaActualizacion,
 		FechaEliminacion:   m.FechaEliminacion,
@@ -69,6 +82,7 @@ func (m *Module) ToResponseWithPermissions() ModuleWithPermissions {
 		FechaEliminacion:   m.FechaEliminacion,
 	}
 }
+
 func (m *Module) HasPermission(permisoID int) bool {
 	for _, permiso := range m.Permisos {
 		if permiso.ID == permisoID {

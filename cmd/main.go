@@ -129,7 +129,7 @@ func main() {
 	{
 		moduleRoutes.POST("", authMiddleware.Authorization("roles_permisos", "W"), moduleHandler.Create)
 		moduleRoutes.GET("", authMiddleware.Authorization("roles_permisos", "R"), moduleHandler.GetAll)
-		moduleRoutes.GET("/:id/permissions", authMiddleware.Authorization("roles_permisos", "R"), moduleHandler.GetModuleWithPermissions)
+		moduleRoutes.GET("/:id", authMiddleware.Authorization("roles_permisos", "R"), moduleHandler.GetModuleWithPermissions)
 		moduleRoutes.POST("/assign-permissions", authMiddleware.Authorization("roles_permisos", "W"), moduleHandler.AssignPermissions)
 		moduleRoutes.DELETE("/:id", authMiddleware.Authorization("roles_permisos", "D"), moduleHandler.Delete)
 		moduleRoutes.DELETE("/remove-permission", authMiddleware.Authorization("roles_permisos", "D"), moduleHandler.RemovePermission)
