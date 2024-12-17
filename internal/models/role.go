@@ -19,18 +19,23 @@ type CreateRoleRequest struct {
 	Descripcion string `json:"descripcion"`
 }
 
+// Nueva estructura para la asignación múltiple de permisos
+type AssignRolePermissionsRequest struct {
+	RoleID             int                    `json:"role_id" binding:"required"`
+	ModulesPermissions []ModulePermissionInfo `json:"modules_permissions" binding:"required,dive"`
+}
+
+type ModulePermissionInfo struct {
+	ModuloID      int   `json:"modulo_id" binding:"required"`
+	PermisoTipoID []int `json:"permiso_tipo_id" binding:"required,dive"`
+}
+
 type RoleResponse struct {
 	ID                 int       `json:"id"`
 	Nombre             string    `json:"nombre"`
 	Descripcion        string    `json:"descripcion"`
 	FechaCreacion      time.Time `json:"fecha_creacion"`
 	FechaActualizacion time.Time `json:"fecha_actualizacion"`
-}
-
-type AssignRolePermissionsRequest struct {
-	RoleID        int   `json:"role_id" binding:"required"`
-	ModuloID      int   `json:"modulo_id" binding:"required"`
-	PermisoTipoID []int `json:"permiso_tipo_id" binding:"required"`
 }
 
 func (r *Role) ToResponse() RoleResponse {

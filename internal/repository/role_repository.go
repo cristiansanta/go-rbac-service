@@ -63,7 +63,7 @@ func (r *RoleRepository) Delete(id int) error {
 	})
 }
 
-func (r *RoleRepository) AssignModulePermission(roleID, moduleID int, permisoTipoIDs []int) error {
+func (r *RoleRepository) AssignModulePermissions(roleID int, modulePermissions []models.ModulePermissionInfo) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		// Verificar rol
 		var role models.Role
@@ -76,45 +76,47 @@ func (r *RoleRepository) AssignModulePermission(roleID, moduleID int, permisoTip
 			return fmt.Errorf("no se pueden modificar los permisos del rol SuperAdmin")
 		}
 
-		// Verificar módulo
-		var module models.Module
-		if err := tx.Preload("Permisos").First(&module, moduleID).Error; err != nil {
-			return fmt.Errorf("módulo no encontrado: %v", err)
-		}
-
-		// Crear un mapa de los permisos disponibles en el módulo
-		moduloPermisos := make(map[int]bool)
-		for _, permiso := range module.Permisos {
-			moduloPermisos[permiso.ID] = true
-		}
-
-		// Verificar que todos los permisos solicitados estén disponibles en el módulo
-		var permisosNoDisponibles []int
-		for _, permisoID := range permisoTipoIDs {
-			if !moduloPermisos[permisoID] {
-				permisosNoDisponibles = append(permisosNoDisponibles, permisoID)
-			}
-		}
-
-		if len(permisosNoDisponibles) > 0 {
-			return fmt.Errorf("los siguientes permisos no están disponibles en el módulo: %v", permisosNoDisponibles)
-		}
-
-		// Eliminar permisos existentes
-		if err := tx.Where("id_rol = ? AND id_modulo = ?", roleID, moduleID).
+		// Eliminar todos los permisos actuales del rol
+		if err := tx.Where("id_rol = ?", roleID).
 			Delete(&models.RolModuloPermiso{}).Error; err != nil {
-			return err
+			return fmt.Errorf("error eliminando permisos existentes: %v", err)
 		}
 
-		// Crear nuevos permisos
-		for _, permisoID := range permisoTipoIDs {
-			rolModuloPermiso := &models.RolModuloPermiso{
-				IdRol:         roleID,
-				IdModulo:      moduleID,
-				IdPermisoTipo: permisoID,
+		// Procesar cada módulo con sus permisos
+		for _, mp := range modulePermissions {
+			// Verificar si el módulo existe
+			var module models.Module
+			if err := tx.Preload("Permisos").
+				Where("id = ? AND fecha_eliminacion IS NULL", mp.ModuloID).
+				First(&module).Error; err != nil {
+				return fmt.Errorf("módulo %d no encontrado o está eliminado", mp.ModuloID)
 			}
-			if err := tx.Create(rolModuloPermiso).Error; err != nil {
-				return err
+
+			// Crear mapa de permisos disponibles en el módulo
+			moduloPermisos := make(map[int]bool)
+			for _, permiso := range module.Permisos {
+				moduloPermisos[permiso.ID] = true
+			}
+
+			// Verificar y asignar cada permiso
+			for _, permisoID := range mp.PermisoTipoID {
+				// Verificar si el permiso está disponible en el módulo
+				if !moduloPermisos[permisoID] {
+					return fmt.Errorf("el permiso %d no está disponible para el módulo %s",
+						permisoID, module.Nombre)
+				}
+
+				// Crear la asignación
+				rolModuloPermiso := &models.RolModuloPermiso{
+					IdRol:         roleID,
+					IdModulo:      mp.ModuloID,
+					IdPermisoTipo: permisoID,
+				}
+
+				if err := tx.Create(rolModuloPermiso).Error; err != nil {
+					return fmt.Errorf("error asignando permiso %d al módulo %s: %v",
+						permisoID, module.Nombre, err)
+				}
 			}
 		}
 
