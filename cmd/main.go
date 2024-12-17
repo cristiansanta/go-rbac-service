@@ -14,10 +14,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
-// Función mejorada de limpieza de tokens
 func setupTokenCleanup(tokenBlacklistRepo *repository.TokenBlacklistRepository) func() {
 	ticker := time.NewTicker(24 * time.Hour)
 	done := make(chan bool)
@@ -36,7 +36,6 @@ func setupTokenCleanup(tokenBlacklistRepo *repository.TokenBlacklistRepository) 
 		}
 	}()
 
-	// Retornar función de cleanup
 	return func() {
 		close(done)
 	}
@@ -48,11 +47,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to setup database: %v", err)
 	}
-	if err := config.SeedPermisos(db); err != nil {
-		log.Fatalf("Failed to seed permisos: %v", err)
-	}
 
-	// Initialize repositories (PRIMERO)
+	// Initialize repositories
 	roleRepo := repository.NewRoleRepository(db)
 	permisoTipoRepo := repository.NewPermisoTipoRepository(db)
 	moduleRepo := repository.NewModuleRepository(db)
@@ -63,16 +59,16 @@ func main() {
 
 	// Iniciar la tarea de limpieza de tokens
 	cleanup := setupTokenCleanup(tokenBlacklistRepo)
-	defer cleanup() // Asegurar que se detenga la limpieza al cerrar
+	defer cleanup()
 
-	// Initialize services (SEGUNDO)
+	// Initialize services
 	authService := services.NewAuthService(userRepo, tokenBlacklistRepo)
 	auditService := services.NewAuditService(registroAuditoriaRepo)
 
-	// Initialize middleware (TERCERO)
+	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(authService)
 
-	// Initialize handlers (CUARTO)
+	// Initialize handlers
 	roleHandler := handlers.NewRoleHandler(roleRepo, rolModuloPermisoRepo)
 	permisoTipoHandler := handlers.NewPermisoTipoHandler(permisoTipoRepo)
 	moduleHandler := handlers.NewModuleHandler(moduleRepo)
@@ -82,6 +78,24 @@ func main() {
 
 	// Setup Gin router
 	r := gin.Default()
+
+	// Configurar CORS
+	config := cors.DefaultConfig()
+	config.AllowOrigins = []string{"http://localhost:3000"}
+	config.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
+	config.AllowHeaders = []string{
+		"Origin",
+		"Content-Length",
+		"Content-Type",
+		"Authorization",
+		"Accept",
+		"X-Requested-With",
+	}
+	config.ExposeHeaders = []string{"Content-Length"}
+	config.AllowCredentials = true
+	config.MaxAge = 12 * time.Hour
+
+	r.Use(cors.New(config))
 
 	// Public routes
 	r.POST("/login", authHandler.Login)
@@ -124,20 +138,18 @@ func main() {
 		permisoTipoRoutes.GET("/:id", authMiddleware.Authorization("roles_permisos", "R"), permisoTipoHandler.GetByID)
 	}
 
-	// Module routes
+	// Module routes - Actualizado sin la ruta de creación
 	moduleRoutes := protected.Group("/modules")
 	{
-		moduleRoutes.POST("", authMiddleware.Authorization("roles_permisos", "W"), moduleHandler.Create)
 		moduleRoutes.GET("", authMiddleware.Authorization("roles_permisos", "R"), moduleHandler.GetAll)
 		moduleRoutes.GET("/:id", authMiddleware.Authorization("roles_permisos", "R"), moduleHandler.GetModuleWithPermissions)
-		moduleRoutes.POST("/assign-permissions", authMiddleware.Authorization("roles_permisos", "W"), moduleHandler.AssignPermissions)
 		moduleRoutes.DELETE("/:id", authMiddleware.Authorization("roles_permisos", "D"), moduleHandler.Delete)
 		moduleRoutes.DELETE("/remove-permission", authMiddleware.Authorization("roles_permisos", "D"), moduleHandler.RemovePermission)
 		moduleRoutes.POST("/:id/restore", authMiddleware.Authorization("roles_permisos", "W"), moduleHandler.Restore)
 		moduleRoutes.GET("/deleted", authMiddleware.Authorization("roles_permisos", "R"), moduleHandler.GetDeletedModules)
 	}
 
-	// Rutas de auditoría (protegidas, solo accesibles por SuperAdmin)
+	// Audit routes
 	auditRoutes := protected.Group("/audit")
 	{
 		auditRoutes.GET("/logs", authMiddleware.Authorization("roles_permisos", "R"), auditHandler.GetLogs)

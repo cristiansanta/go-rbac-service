@@ -68,6 +68,12 @@ func SetupDatabase() (*gorm.DB, error) {
 		return nil, fmt.Errorf("error al crear permisos: %v", err)
 	}
 
+	// Agregar el nuevo seeder de módulos
+	if err := SeedModules(db); err != nil {
+		log.Printf("Error en SeedModules: %v", err)
+		return nil, fmt.Errorf("error al crear módulos: %v", err)
+	}
+
 	if err := SeedSuperAdmin(db); err != nil {
 		log.Printf("Error en SeedSuperAdmin: %v", err)
 		return nil, fmt.Errorf("error al crear SuperAdmin: %v", err)

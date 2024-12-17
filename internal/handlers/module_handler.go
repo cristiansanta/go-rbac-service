@@ -1,4 +1,3 @@
-// internal/handlers/module_handler.go
 package handlers
 
 import (
@@ -16,36 +15,6 @@ type ModuleHandler struct {
 
 func NewModuleHandler(repo *repository.ModuleRepository) *ModuleHandler {
 	return &ModuleHandler{repo: repo}
-}
-
-// Método Create modificado para manejar la creación masiva
-func (h *ModuleHandler) Create(c *gin.Context) {
-	var req models.CrearModulosRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Validar que haya al menos un módulo
-	if len(req.Modules) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "debe proporcionar al menos un módulo"})
-		return
-	}
-
-	// Crear los módulos
-	modulosCreados, err := h.repo.CrearModulos(req.Modules)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Preparar la respuesta
-	response := make([]models.ModuleResponse, len(modulosCreados))
-	for i, modulo := range modulosCreados {
-		response[i] = modulo.ToResponse()
-	}
-
-	c.JSON(http.StatusCreated, response)
 }
 
 func (h *ModuleHandler) GetAll(c *gin.Context) {
@@ -142,31 +111,6 @@ func (h *ModuleHandler) GetDeletedModules(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// AssignPermissions maneja la asignación manual de permisos a un módulo
-func (h *ModuleHandler) AssignPermissions(c *gin.Context) {
-	var req models.AssignModulePermissionsRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Asignar permisos al módulo
-	if err := h.repo.AssignPermissions(req.ModuloID, req.PermisoTipoIDs); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Obtener el módulo actualizado con sus permisos
-	moduleWithPermissions, err := h.repo.GetModuleWithPermissions(req.ModuloID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, moduleWithPermissions)
-}
-
-// RemovePermission maneja la eliminación de un permiso específico de un módulo
 func (h *ModuleHandler) RemovePermission(c *gin.Context) {
 	var req struct {
 		ModuloID      int `json:"modulo_id" binding:"required"`
