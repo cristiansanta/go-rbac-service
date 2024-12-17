@@ -33,7 +33,7 @@ type ModuleResponse struct {
 	ID                 int                   `json:"id"`
 	Nombre             string                `json:"nombre"`
 	Descripcion        string                `json:"descripcion"`
-	Permisos           []PermisoTipoResponse `json:"permisos,omitempty"`
+	Permisos           []PermisoTipoResponse `json:"permisos"`
 	FechaCreacion      time.Time             `json:"fecha_creacion"`
 	FechaActualizacion time.Time             `json:"fecha_actualizacion"`
 	FechaEliminacion   *time.Time            `json:"fecha_eliminacion,omitempty"`

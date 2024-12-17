@@ -98,7 +98,10 @@ func (r *ModuleRepository) CrearModulos(modulosInfo []models.InfoModulo) ([]mode
 
 func (r *ModuleRepository) GetAll() ([]models.Module, error) {
 	var modules []models.Module
-	err := r.db.Where("fecha_eliminacion IS NULL").Find(&modules).Error
+	// Modificamos para incluir los permisos en la consulta
+	err := r.db.Where("fecha_eliminacion IS NULL").
+		Preload("Permisos"). // Agregamos esto para cargar los permisos
+		Find(&modules).Error
 	return modules, err
 }
 
