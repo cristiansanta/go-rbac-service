@@ -11,7 +11,7 @@ import (
 )
 
 func SetupDatabase() (*gorm.DB, error) {
-	dsn := "host=localhost user=authuser password=authpass dbname=authdb port=5432 sslmode=disable TimeZone=America/Bogota"
+	dsn := "host=localhost user=authuser password=authpass dbname=authdb port=5433 sslmode=disable TimeZone=America/Bogota"
 
 	config := &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{

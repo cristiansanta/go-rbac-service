@@ -28,14 +28,19 @@ func (j *JsonMap) Scan(value interface{}) error {
 	return json.Unmarshal(bytes, &j)
 }
 
+func (RegistroAuditoria) TableName() string {
+	return "registros_auditoria"
+}
+
 type RegistroAuditoria struct {
 	ID              int       `json:"id" gorm:"primaryKey;autoIncrement"`
 	IdUsuario       int       `json:"id_usuario"`
-	NombreUsuario   string    `json:"nombre_usuario"`
+	Correo          string    `json:"correo"`                            // Cambiado de nombre_usuario a correo
+	Regional        string    `json:"regional" gorm:"type:varchar(100)"` // Mantenemos regional
 	NombreModulo    string    `json:"nombre_modulo"`
-	Accion          string    `json:"accion"`        // CREATE, READ, UPDATE, DELETE
-	PermisoUsado    string    `json:"permiso_usado"` // R, W, X, D
-	TipoEntidad     string    `json:"tipo_entidad"`  // users, roles, modules, etc.
+	Accion          string    `json:"accion"`
+	PermisoUsado    string    `json:"permiso_usado"`
+	TipoEntidad     string    `json:"tipo_entidad"`
 	IdEntidad       int       `json:"id_entidad"`
 	ValorAnterior   JsonMap   `json:"valor_anterior" gorm:"type:jsonb"`
 	ValorNuevo      JsonMap   `json:"valor_nuevo" gorm:"type:jsonb"`
@@ -47,14 +52,11 @@ type RegistroAuditoria struct {
 	FechaCreacion   time.Time `json:"fecha_creacion" gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
 }
 
-func (RegistroAuditoria) TableName() string {
-	return "registros_auditoria"
-}
-
 type RegistroAuditoriaResponse struct {
 	ID              int       `json:"id"`
 	IdUsuario       int       `json:"id_usuario"`
-	NombreUsuario   string    `json:"nombre_usuario"`
+	Correo          string    `json:"correo"`   
+	Regional        string    `json:"regional"` // Mantenemos regional
 	NombreModulo    string    `json:"nombre_modulo"`
 	Accion          string    `json:"accion"`
 	PermisoUsado    string    `json:"permiso_usado"`
@@ -73,7 +75,8 @@ func (r *RegistroAuditoria) ToResponse() RegistroAuditoriaResponse {
 	return RegistroAuditoriaResponse{
 		ID:              r.ID,
 		IdUsuario:       r.IdUsuario,
-		NombreUsuario:   r.NombreUsuario,
+		Correo:          r.Correo,   
+		Regional:        r.Regional, 
 		NombreModulo:    r.NombreModulo,
 		Accion:          r.Accion,
 		PermisoUsado:    r.PermisoUsado,

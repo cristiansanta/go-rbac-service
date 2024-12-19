@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // bodyLogWriter estructura para capturar la respuesta
@@ -50,6 +51,7 @@ func AuditMiddleware(auditService *services.AuditService) gin.HandlerFunc {
 		// Extraer información necesaria para el log
 		userID := c.GetInt("user_id")
 		username := c.GetString("user_email")
+		userRegional := c.GetString("user_regional") // Obtener el regional del contexto
 		moduleName := getModuleFromPath(c.Request.URL.Path)
 		action := getActionFromMethod(c.Request.Method)
 		permissionUsed := getPermissionFromContext(c)
@@ -65,7 +67,8 @@ func AuditMiddleware(auditService *services.AuditService) gin.HandlerFunc {
 		// Crear el log de auditoría
 		auditLog := &models.RegistroAuditoria{
 			IdUsuario:       userID,
-			NombreUsuario:   username,
+			Correo:          username,     // Cambiado de NombreUsuario a Correo
+			Regional:        userRegional, // Mantenemos el regional
 			NombreModulo:    moduleName,
 			Accion:          action,
 			PermisoUsado:    permissionUsed,
@@ -88,6 +91,57 @@ func AuditMiddleware(auditService *services.AuditService) gin.HandlerFunc {
 			}
 		}(auditLog)
 	}
+}
+
+// getEntityState obtiene el estado actual de una entidad
+func getEntityState(db *gorm.DB, entityType string, entityID int) models.JsonMap {
+	if entityID <= 0 {
+		return nil
+	}
+
+	var result models.JsonMap
+
+	switch entityType {
+	case "Rol":
+		var entity models.Role
+		if err := db.First(&entity, entityID).Error; err == nil {
+			result = convertToJsonMap(entity)
+		}
+	case "Usuario":
+		var entity models.User
+		if err := db.Preload("Role").First(&entity, entityID).Error; err == nil {
+			result = convertToJsonMap(entity)
+		}
+	case "Módulo":
+		var entity models.Module
+		if err := db.Preload("Permisos").First(&entity, entityID).Error; err == nil {
+			result = convertToJsonMap(entity)
+		}
+	case "TipoPermiso":
+		var entity models.PermisoTipo
+		if err := db.First(&entity, entityID).Error; err == nil {
+			result = convertToJsonMap(entity)
+		}
+	}
+
+	return result
+}
+func convertToJsonMap(v interface{}) models.JsonMap {
+	jsonBytes, err := json.Marshal(v)
+	if err != nil {
+		return nil
+	}
+
+	var result models.JsonMap
+	if err := json.Unmarshal(jsonBytes, &result); err != nil {
+		return nil
+	}
+
+	// Eliminar campos sensibles
+	delete(result, "contraseña")
+	delete(result, "password")
+
+	return result
 }
 
 // Funciones auxiliares

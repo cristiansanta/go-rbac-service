@@ -156,6 +156,7 @@ func main() {
 		auditRoutes.GET("/logs/user/:user_id", authMiddleware.Authorization("roles_permisos", "R"), auditHandler.GetLogsByUser)
 		auditRoutes.GET("/logs/module/:module_name", authMiddleware.Authorization("roles_permisos", "R"), auditHandler.GetLogsByModule)
 		auditRoutes.GET("/logs/date-range", authMiddleware.Authorization("roles_permisos", "R"), auditHandler.GetLogsByDateRange)
+		auditRoutes.GET("/logs/filter", authMiddleware.Authorization("roles_permisos", "R"), auditHandler.GetLogsByFilters)
 	}
 
 	// Configurar el servidor HTTP con Graceful Shutdown

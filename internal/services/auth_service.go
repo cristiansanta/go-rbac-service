@@ -190,3 +190,6 @@ func (s *AuthService) CheckPermission(userID int, module string, permission stri
 
 	return false, nil
 }
+func (s *AuthService) GetUserByID(userID int) (*models.User, error) {
+	return s.userRepo.GetByID(userID)
+}

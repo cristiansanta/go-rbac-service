@@ -108,3 +108,32 @@ func (h *AuditHandler) GetLogsByDateRange(c *gin.Context) {
 		"logs":  logs,
 	})
 }
+func (h *AuditHandler) GetLogsByFilters(c *gin.Context) {
+	// Obtener parámetros de consulta
+	correo := c.Query("correo")
+	regional := c.Query("regional")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
+
+	// Validar parámetros de paginación
+	if page < 1 {
+		page = 1
+	}
+	if size < 1 {
+		size = 10
+	}
+
+	// Obtener logs filtrados
+	logs, total, err := h.auditService.ObtenerRegistrosPorFiltros(correo, regional, page, size)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"total": total,
+		"page":  page,
+		"size":  size,
+		"logs":  logs,
+	})
+}

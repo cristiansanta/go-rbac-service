@@ -115,3 +115,37 @@ func (r *RegistroAuditoriaRepository) GetByRangoFechas(fechaInicio, fechaFin str
 
 	return registros, total, nil
 }
+
+// GetByFilters obtiene registros filtrados por correo y/o regional con paginación
+func (r *RegistroAuditoriaRepository) GetByFilters(correo, regional string, page, size int) ([]models.RegistroAuditoria, int64, error) {
+	var registros []models.RegistroAuditoria
+	var total int64
+	offset := (page - 1) * size
+
+	// Construir la consulta base
+	query := r.db.Model(&models.RegistroAuditoria{})
+
+	// Aplicar filtros si están presentes
+	if correo != "" {
+		query = query.Where("correo ILIKE ?", "%"+correo+"%")
+	}
+	if regional != "" {
+		query = query.Where("regional = ?", regional)
+	}
+
+	// Obtener el total de registros que coinciden con los filtros
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Obtener los registros paginados
+	if err := query.
+		Order("fecha_creacion DESC").
+		Offset(offset).
+		Limit(size).
+		Find(&registros).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return registros, total, nil
+}

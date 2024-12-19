@@ -49,10 +49,19 @@ func (m *AuthMiddleware) Authentication() gin.HandlerFunc {
 			return
 		}
 
+		// Obtener información adicional del usuario
+		user, err := m.authService.GetUserByID(tokenMetadata.UserID)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "usuario no encontrado"})
+			c.Abort()
+			return
+		}
+
 		// Guardar los datos del usuario en el contexto
 		c.Set("user_id", tokenMetadata.UserID)
 		c.Set("user_email", tokenMetadata.Email)
 		c.Set("user_role", tokenMetadata.Role)
+		c.Set("user_regional", user.Regional) // Añadir el regional al contexto
 
 		c.Next()
 	}
