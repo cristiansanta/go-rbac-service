@@ -13,14 +13,8 @@ import (
 func SetupDatabase() (*gorm.DB, error) {
 	dsn := "host=localhost user=authuser password=authpass dbname=authdb port=5433 sslmode=disable TimeZone=America/Bogota"
 
-	config := &gorm.Config{
-		NamingStrategy: schema.NamingStrategy{
-			SingularTable: true,
-			TablePrefix:   "testing.",
-		},
-	}
-
-	db, err := gorm.Open(postgres.Open(dsn), config)
+	// Primero conectar sin configuración específica de schema
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %v", err)
 	}
@@ -33,6 +27,16 @@ func SetupDatabase() (*gorm.DB, error) {
 	// Establecer schema por defecto
 	if err := db.Exec("SET search_path TO testing").Error; err != nil {
 		return nil, fmt.Errorf("error estableciendo schema: %v", err)
+	}
+
+	// Reconectar con la configuración correcta
+	db, err = gorm.Open(postgres.Open(dsn+" search_path=testing"), &gorm.Config{
+		NamingStrategy: schema.NamingStrategy{
+			SingularTable: true,
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect with schema: %v", err)
 	}
 
 	// Función de actualización
@@ -48,7 +52,7 @@ func SetupDatabase() (*gorm.DB, error) {
 		log.Printf("Error creando función update_fecha_actualizacion: %v", err)
 	}
 
-	// Automigrate
+	// Automigrate con el schema correcto
 	if err := db.AutoMigrate(
 		&models.Role{},
 		&models.PermisoTipo{},
@@ -68,10 +72,20 @@ func SetupDatabase() (*gorm.DB, error) {
 		return nil, fmt.Errorf("error al crear permisos: %v", err)
 	}
 
-	// Agregar el nuevo seeder de módulos
 	if err := SeedModules(db); err != nil {
 		log.Printf("Error en SeedModules: %v", err)
 		return nil, fmt.Errorf("error al crear módulos: %v", err)
+	}
+
+	if err := SeedSuperAdmin(db); err != nil {
+		log.Printf("Error en SeedSuperAdmin: %v", err)
+		return nil, fmt.Errorf("error al crear SuperAdmin: %v", err)
+	}
+
+	// Agregar el nuevo seeder de Funcionario antes del SuperAdmin
+	if err := SeedFuncionario(db); err != nil {
+		log.Printf("Error en SeedFuncionario: %v", err)
+		return nil, fmt.Errorf("error al crear rol Funcionario: %v", err)
 	}
 
 	if err := SeedSuperAdmin(db); err != nil {

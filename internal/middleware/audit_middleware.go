@@ -45,18 +45,145 @@ func AuditMiddleware(auditService *services.AuditService) gin.HandlerFunc {
 		}
 		c.Writer = blw
 
-		// Continuar con la request
+		// Verificar si es ruta de login
+		if c.Request.URL.Path == "/login" {
+			// Continuar con la request para que se procese
+			c.Next()
+
+			// Extraer email del intento de login
+			var loginData struct {
+				Email string `json:"email"`
+			}
+			if err := json.Unmarshal(bodyBytes, &loginData); err != nil {
+				log.Printf("Error unmarshaling login data: %v", err)
+			}
+
+			auditLog := &models.RegistroAuditoria{
+				Correo:          loginData.Email,
+				NombreModulo:    "auth",
+				Accion:          "LOGIN",
+				PermisoUsado:    "W",
+				DireccionIP:     c.ClientIP(),
+				AgenteUsuario:   c.Request.UserAgent(),
+				CodigoEstado:    c.Writer.Status(),
+				RutaSolicitud:   c.Request.URL.Path,
+				MetodoSolicitud: c.Request.Method,
+				FechaCreacion:   startTime,
+			}
+
+			// Si el login fue exitoso (código 200)
+			if c.Writer.Status() == 200 {
+				// Extraer información del usuario de la respuesta
+				var loginResponse struct {
+					User struct {
+						ID       int    `json:"id"`
+						Regional string `json:"regional"`
+						Role     struct {
+							Nombre string `json:"nombre"`
+							ID     int    `json:"id"`
+						} `json:"role"`
+					} `json:"user"`
+				}
+
+				responseBody := blw.body.String()
+				if err := json.Unmarshal([]byte(responseBody), &loginResponse); err == nil {
+					auditLog.IdUsuario = loginResponse.User.ID
+					auditLog.Regional = loginResponse.User.Regional
+					auditLog.Rol = loginResponse.User.Role.Nombre
+					auditLog.IdRol = loginResponse.User.Role.ID
+					auditLog.ValorNuevo = models.JsonMap{"mensaje": "Login exitoso"}
+				} else {
+					log.Printf("Error unmarshaling login response: %v", err)
+				}
+			} else {
+				auditLog.Accion = "LOGIN_FALLIDO"
+				auditLog.ValorNuevo = models.JsonMap{"error": "Credenciales inválidas"}
+			}
+
+			go func(registro *models.RegistroAuditoria) {
+				if err := auditService.CreateRegistro(registro); err != nil {
+					log.Printf("Error al crear registro de auditoría: %v", err)
+				}
+			}(auditLog)
+
+			return
+		}
+
+		// Para las demás rutas, verificar autenticación
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			auditLog := &models.RegistroAuditoria{
+				IdUsuario:       0,
+				Correo:          "INTENTO_NO_AUTORIZADO",
+				Regional:        "",
+				NombreModulo:    getModuleFromPath(c.Request.URL.Path),
+				Accion:          "ACCESO_DENEGADO",
+				PermisoUsado:    "",
+				Rol:             "NO_AUTENTICADO",
+				IdRol:           0,
+				ValorAnterior:   nil,
+				ValorNuevo:      models.JsonMap{"error": "Intento de acceso sin token de autenticación"},
+				DireccionIP:     c.ClientIP(),
+				AgenteUsuario:   c.Request.UserAgent(),
+				CodigoEstado:    401,
+				RutaSolicitud:   c.Request.URL.Path,
+				MetodoSolicitud: c.Request.Method,
+				FechaCreacion:   startTime,
+			}
+
+			go func(registro *models.RegistroAuditoria) {
+				if err := auditService.CreateRegistro(registro); err != nil {
+					log.Printf("Error al registrar intento no autorizado: %v", err)
+				}
+			}(auditLog)
+
+			c.Next()
+			return
+		}
+
 		c.Next()
 
-		// Extraer información necesaria para el log
+		// Si el estado es 401 o 403, registrar como intento fallido
+		if c.Writer.Status() == 401 || c.Writer.Status() == 403 {
+			auditLog := &models.RegistroAuditoria{
+				IdUsuario:       c.GetInt("user_id"),
+				Correo:          c.GetString("user_email"),
+				Regional:        c.GetString("user_regional"),
+				NombreModulo:    getModuleFromPath(c.Request.URL.Path),
+				Accion:          "ACCESO_DENEGADO",
+				PermisoUsado:    getPermissionFromContext(c),
+				Rol:             c.GetString("user_role"),
+				IdRol:           c.GetInt("user_role_id"),
+				ValorAnterior:   nil,
+				ValorNuevo:      models.JsonMap{"error": "Acceso denegado - Token inválido o permisos insuficientes"},
+				DireccionIP:     c.ClientIP(),
+				AgenteUsuario:   c.Request.UserAgent(),
+				CodigoEstado:    c.Writer.Status(),
+				RutaSolicitud:   c.Request.URL.Path,
+				MetodoSolicitud: c.Request.Method,
+				FechaCreacion:   startTime,
+			}
+
+			go func(registro *models.RegistroAuditoria) {
+				if err := auditService.CreateRegistro(registro); err != nil {
+					log.Printf("Error al registrar acceso denegado: %v", err)
+				}
+			}(auditLog)
+
+			return
+		}
+
+		// Registrar acciones autorizadas normales
 		userID := c.GetInt("user_id")
 		username := c.GetString("user_email")
-		userRegional := c.GetString("user_regional") // Obtener el regional del contexto
+		userRegional := c.GetString("user_regional")
+		userRole := c.GetString("user_role")
+		userRoleID := c.GetInt("user_role_id")
+
 		moduleName := getModuleFromPath(c.Request.URL.Path)
 		action := getActionFromMethod(c.Request.Method)
 		permissionUsed := getPermissionFromContext(c)
 
-		// Preparar valores old y new para cambios
 		var oldValue, newValue models.JsonMap
 		if len(bodyBytes) > 0 && isWriteOperation(c.Request.Method) {
 			if err := json.Unmarshal(bodyBytes, &newValue); err != nil {
@@ -64,16 +191,15 @@ func AuditMiddleware(auditService *services.AuditService) gin.HandlerFunc {
 			}
 		}
 
-		// Crear el log de auditoría
 		auditLog := &models.RegistroAuditoria{
 			IdUsuario:       userID,
-			Correo:          username,     // Cambiado de NombreUsuario a Correo
-			Regional:        userRegional, // Mantenemos el regional
+			Correo:          username,
+			Regional:        userRegional,
 			NombreModulo:    moduleName,
 			Accion:          action,
 			PermisoUsado:    permissionUsed,
-			TipoEntidad:     getEntityTypeFromPath(c.Request.URL.Path),
-			IdEntidad:       getEntityIDFromPath(c.Params),
+			Rol:             userRole,
+			IdRol:           userRoleID,
 			ValorAnterior:   oldValue,
 			ValorNuevo:      newValue,
 			DireccionIP:     c.ClientIP(),
@@ -84,7 +210,6 @@ func AuditMiddleware(auditService *services.AuditService) gin.HandlerFunc {
 			FechaCreacion:   startTime,
 		}
 
-		// Guardar el log de manera asíncrona
 		go func(registro *models.RegistroAuditoria) {
 			if err := auditService.CreateRegistro(registro); err != nil {
 				log.Printf("Error al crear registro de auditoría: %v", err)

@@ -62,6 +62,25 @@ func (h *AuditHandler) GetLogsByUser(c *gin.Context) {
 	})
 }
 
+func (h *AuditHandler) GetLogsByRole(c *gin.Context) {
+	rol := c.Param("rol")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
+
+	logs, total, err := h.auditService.ObtenerRegistrosPorRol(rol, page, size)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"total": total,
+		"page":  page,
+		"size":  size,
+		"logs":  logs,
+	})
+}
+
 // GetLogsByModule obtiene logs de un módulo específico
 func (h *AuditHandler) GetLogsByModule(c *gin.Context) {
 	moduleName := c.Param("module_name")
@@ -109,13 +128,12 @@ func (h *AuditHandler) GetLogsByDateRange(c *gin.Context) {
 	})
 }
 func (h *AuditHandler) GetLogsByFilters(c *gin.Context) {
-	// Obtener parámetros de consulta
 	correo := c.Query("correo")
 	regional := c.Query("regional")
+	rol := c.Query("rol")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
 
-	// Validar parámetros de paginación
 	if page < 1 {
 		page = 1
 	}
@@ -123,8 +141,7 @@ func (h *AuditHandler) GetLogsByFilters(c *gin.Context) {
 		size = 10
 	}
 
-	// Obtener logs filtrados
-	logs, total, err := h.auditService.ObtenerRegistrosPorFiltros(correo, regional, page, size)
+	logs, total, err := h.auditService.ObtenerRegistrosPorFiltros(correo, regional, rol, page, size)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

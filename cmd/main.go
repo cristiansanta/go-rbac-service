@@ -96,11 +96,11 @@ func main() {
 	config.MaxAge = 12 * time.Hour
 
 	r.Use(cors.New(config))
+	r.Use(middleware.AuditMiddleware(auditService))
 
 	// Public routes
 	r.POST("/login", authHandler.Login)
 	r.POST("/logout", authMiddleware.Authentication(), authHandler.Logout)
-	r.Use(middleware.AuditMiddleware(auditService))
 
 	// Protected routes
 	protected := r.Group("")
@@ -157,6 +157,7 @@ func main() {
 		auditRoutes.GET("/logs/module/:module_name", authMiddleware.Authorization("roles_permisos", "R"), auditHandler.GetLogsByModule)
 		auditRoutes.GET("/logs/date-range", authMiddleware.Authorization("roles_permisos", "R"), auditHandler.GetLogsByDateRange)
 		auditRoutes.GET("/logs/filter", authMiddleware.Authorization("roles_permisos", "R"), auditHandler.GetLogsByFilters)
+		auditRoutes.GET("/logs/role/:rol", authMiddleware.Authorization("roles_permisos", "R"), auditHandler.GetLogsByRole)
 	}
 
 	// Configurar el servidor HTTP con Graceful Shutdown

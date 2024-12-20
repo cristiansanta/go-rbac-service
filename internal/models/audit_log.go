@@ -35,13 +35,13 @@ func (RegistroAuditoria) TableName() string {
 type RegistroAuditoria struct {
 	ID              int       `json:"id" gorm:"primaryKey;autoIncrement"`
 	IdUsuario       int       `json:"id_usuario"`
-	Correo          string    `json:"correo"`                            // Cambiado de nombre_usuario a correo
-	Regional        string    `json:"regional" gorm:"type:varchar(100)"` // Mantenemos regional
+	Correo          string    `json:"correo"`
+	Regional        string    `json:"regional" gorm:"type:varchar(100)"`
 	NombreModulo    string    `json:"nombre_modulo"`
 	Accion          string    `json:"accion"`
 	PermisoUsado    string    `json:"permiso_usado"`
-	TipoEntidad     string    `json:"tipo_entidad"`
-	IdEntidad       int       `json:"id_entidad"`
+	Rol             string    `json:"rol"`
+	IdRol           int       `json:"id_rol"`
 	ValorAnterior   JsonMap   `json:"valor_anterior" gorm:"type:jsonb"`
 	ValorNuevo      JsonMap   `json:"valor_nuevo" gorm:"type:jsonb"`
 	DireccionIP     string    `json:"direccion_ip"`
@@ -55,13 +55,13 @@ type RegistroAuditoria struct {
 type RegistroAuditoriaResponse struct {
 	ID              int       `json:"id"`
 	IdUsuario       int       `json:"id_usuario"`
-	Correo          string    `json:"correo"`   
-	Regional        string    `json:"regional"` // Mantenemos regional
+	Correo          string    `json:"correo"`
+	Regional        string    `json:"regional"`
 	NombreModulo    string    `json:"nombre_modulo"`
 	Accion          string    `json:"accion"`
 	PermisoUsado    string    `json:"permiso_usado"`
-	TipoEntidad     string    `json:"tipo_entidad"`
-	IdEntidad       int       `json:"id_entidad"`
+	Rol             string    `json:"rol"`
+	IdRol           int       `json:"id_rol"`
 	ValorAnterior   JsonMap   `json:"valor_anterior,omitempty"`
 	ValorNuevo      JsonMap   `json:"valor_nuevo,omitempty"`
 	DireccionIP     string    `json:"direccion_ip"`
@@ -75,13 +75,13 @@ func (r *RegistroAuditoria) ToResponse() RegistroAuditoriaResponse {
 	return RegistroAuditoriaResponse{
 		ID:              r.ID,
 		IdUsuario:       r.IdUsuario,
-		Correo:          r.Correo,   
-		Regional:        r.Regional, 
+		Correo:          r.Correo,
+		Regional:        r.Regional,
 		NombreModulo:    r.NombreModulo,
 		Accion:          r.Accion,
 		PermisoUsado:    r.PermisoUsado,
-		TipoEntidad:     r.TipoEntidad,
-		IdEntidad:       r.IdEntidad,
+		Rol:             r.Rol,  
+		IdRol:           r.IdRol,
 		ValorAnterior:   r.ValorAnterior,
 		ValorNuevo:      r.ValorNuevo,
 		DireccionIP:     r.DireccionIP,

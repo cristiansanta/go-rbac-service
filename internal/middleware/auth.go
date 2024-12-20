@@ -34,7 +34,6 @@ func (m *AuthMiddleware) Authentication() gin.HandlerFunc {
 			return
 		}
 
-		// Extraer el token del header "Bearer <token>"
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "formato de token inválido"})
@@ -61,7 +60,8 @@ func (m *AuthMiddleware) Authentication() gin.HandlerFunc {
 		c.Set("user_id", tokenMetadata.UserID)
 		c.Set("user_email", tokenMetadata.Email)
 		c.Set("user_role", tokenMetadata.Role)
-		c.Set("user_regional", user.Regional) // Añadir el regional al contexto
+		c.Set("user_role_id", user.IdRol) // Nuevo
+		c.Set("user_regional", user.Regional)
 
 		c.Next()
 	}

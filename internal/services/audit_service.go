@@ -10,6 +10,20 @@ type AuditService struct {
 	registroRepo *repository.RegistroAuditoriaRepository
 }
 
+func (s *AuditService) ObtenerRegistrosPorRol(rol string, page, size int) ([]models.RegistroAuditoriaResponse, int64, error) {
+	registros, total, err := s.registroRepo.GetByRol(rol, page, size)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error obteniendo registros por rol: %v", err)
+	}
+
+	response := make([]models.RegistroAuditoriaResponse, len(registros))
+	for i, registro := range registros {
+		response[i] = registro.ToResponse()
+	}
+
+	return response, total, nil
+}
+
 func NewAuditService(registroRepo *repository.RegistroAuditoriaRepository) *AuditService {
 	return &AuditService{
 		registroRepo: registroRepo,
@@ -77,14 +91,12 @@ func (s *AuditService) ObtenerRegistrosPorRangoFechas(fechaInicio, fechaFin stri
 }
 
 // ObtenerRegistrosPorFiltros obtiene registros filtrados por correo y/o regional
-func (s *AuditService) ObtenerRegistrosPorFiltros(correo, regional string, page, size int) ([]models.RegistroAuditoriaResponse, int64, error) {
-	// Obtener registros del repositorio
-	registros, total, err := s.registroRepo.GetByFilters(correo, regional, page, size)
+func (s *AuditService) ObtenerRegistrosPorFiltros(correo, regional, rol string, page, size int) ([]models.RegistroAuditoriaResponse, int64, error) {
+	registros, total, err := s.registroRepo.GetByFilters(correo, regional, rol, page, size)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error obteniendo registros filtrados: %v", err)
 	}
 
-	// Convertir a response
 	response := make([]models.RegistroAuditoriaResponse, len(registros))
 	for i, registro := range registros {
 		response[i] = registro.ToResponse()

@@ -37,7 +37,7 @@ func SeedSuperAdmin(db *gorm.DB) error {
 		NumeroDocumento: "0000000000",
 		Sede:            "Principal",
 		IdRol:           superAdminRole.ID,
-		Regional:        "Nacional",
+		Regional:        "Bogotá",
 		Correo:          "superadmin@example.com",
 		Telefono:        "0000000000",
 		Contraseña:      "superadmin123", // La contraseña se hasheará automáticamente por BeforeCreate
