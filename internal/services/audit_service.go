@@ -4,30 +4,23 @@ import (
 	"auth-service/internal/models"
 	"auth-service/internal/repository"
 	"fmt"
+
+	"gorm.io/gorm"
 )
 
 type AuditService struct {
 	registroRepo *repository.RegistroAuditoriaRepository
+	db           *gorm.DB
 }
 
-func (s *AuditService) ObtenerRegistrosPorRol(rol string, page, size int) ([]models.RegistroAuditoriaResponse, int64, error) {
-	registros, total, err := s.registroRepo.GetByRol(rol, page, size)
-	if err != nil {
-		return nil, 0, fmt.Errorf("error obteniendo registros por rol: %v", err)
-	}
-
-	response := make([]models.RegistroAuditoriaResponse, len(registros))
-	for i, registro := range registros {
-		response[i] = registro.ToResponse()
-	}
-
-	return response, total, nil
-}
-
-func NewAuditService(registroRepo *repository.RegistroAuditoriaRepository) *AuditService {
+func NewAuditService(registroRepo *repository.RegistroAuditoriaRepository, db *gorm.DB) *AuditService {
 	return &AuditService{
 		registroRepo: registroRepo,
+		db:           db,
 	}
+}
+func (s *AuditService) GetDB() *gorm.DB {
+	return s.db
 }
 
 func (s *AuditService) CreateRegistro(registro *models.RegistroAuditoria) error {
@@ -52,6 +45,20 @@ func (s *AuditService) ObtenerRegistrosPorUsuario(idUsuario int, page, size int)
 	registros, total, err := s.registroRepo.GetByIdUsuario(idUsuario, page, size)
 	if err != nil {
 		return nil, 0, err
+	}
+
+	response := make([]models.RegistroAuditoriaResponse, len(registros))
+	for i, registro := range registros {
+		response[i] = registro.ToResponse()
+	}
+
+	return response, total, nil
+}
+
+func (s *AuditService) ObtenerRegistrosPorRol(rol string, page, size int) ([]models.RegistroAuditoriaResponse, int64, error) {
+	registros, total, err := s.registroRepo.GetByRol(rol, page, size)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error obteniendo registros por rol: %v", err)
 	}
 
 	response := make([]models.RegistroAuditoriaResponse, len(registros))
@@ -90,7 +97,6 @@ func (s *AuditService) ObtenerRegistrosPorRangoFechas(fechaInicio, fechaFin stri
 	return response, total, nil
 }
 
-// ObtenerRegistrosPorFiltros obtiene registros filtrados por correo y/o regional
 func (s *AuditService) ObtenerRegistrosPorFiltros(correo, regional, rol string, page, size int) ([]models.RegistroAuditoriaResponse, int64, error) {
 	registros, total, err := s.registroRepo.GetByFilters(correo, regional, rol, page, size)
 	if err != nil {

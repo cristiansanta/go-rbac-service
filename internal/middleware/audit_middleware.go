@@ -15,7 +15,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// bodyLogWriter estructura para capturar la respuesta
 type bodyLogWriter struct {
 	gin.ResponseWriter
 	body *bytes.Buffer
@@ -26,7 +25,22 @@ func (w bodyLogWriter) Write(b []byte) (int, error) {
 	return w.ResponseWriter.Write(b)
 }
 
-// AuditMiddleware middleware para registrar las acciones
+// Obtiene el estado anterior de la entidad antes de la operación
+func getResourceState(c *gin.Context, db *gorm.DB) models.JsonMap {
+	id := c.Param("id")
+	if id == "" {
+		return nil
+	}
+
+	entityType := getEntityTypeFromPath(c.Request.URL.Path)
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		return nil
+	}
+
+	return getEntityState(db, entityType, idInt)
+}
+
 func AuditMiddleware(auditService *services.AuditService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		startTime := time.Now()
@@ -45,12 +59,16 @@ func AuditMiddleware(auditService *services.AuditService) gin.HandlerFunc {
 		}
 		c.Writer = blw
 
-		// Verificar si es ruta de login
+		// Obtener estado anterior para operaciones de modificación
+		var oldValue models.JsonMap
+		if c.Request.Method == "PUT" || c.Request.Method == "PATCH" || c.Request.Method == "DELETE" {
+			oldValue = getResourceState(c, auditService.GetDB())
+		}
+
+		// Lógica existente para login
 		if c.Request.URL.Path == "/login" {
-			// Continuar con la request para que se procese
 			c.Next()
 
-			// Extraer email del intento de login
 			var loginData struct {
 				Email string `json:"email"`
 			}
@@ -71,9 +89,7 @@ func AuditMiddleware(auditService *services.AuditService) gin.HandlerFunc {
 				FechaCreacion:   startTime,
 			}
 
-			// Si el login fue exitoso (código 200)
 			if c.Writer.Status() == 200 {
-				// Extraer información del usuario de la respuesta
 				var loginResponse struct {
 					User struct {
 						ID       int    `json:"id"`
@@ -92,8 +108,6 @@ func AuditMiddleware(auditService *services.AuditService) gin.HandlerFunc {
 					auditLog.Rol = loginResponse.User.Role.Nombre
 					auditLog.IdRol = loginResponse.User.Role.ID
 					auditLog.ValorNuevo = models.JsonMap{"mensaje": "Login exitoso"}
-				} else {
-					log.Printf("Error unmarshaling login response: %v", err)
 				}
 			} else {
 				auditLog.Accion = "LOGIN_FALLIDO"
@@ -109,7 +123,7 @@ func AuditMiddleware(auditService *services.AuditService) gin.HandlerFunc {
 			return
 		}
 
-		// Para las demás rutas, verificar autenticación
+		// Verificación de autenticación
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			auditLog := &models.RegistroAuditoria{
@@ -143,7 +157,7 @@ func AuditMiddleware(auditService *services.AuditService) gin.HandlerFunc {
 
 		c.Next()
 
-		// Si el estado es 401 o 403, registrar como intento fallido
+		// Manejo de errores 401/403
 		if c.Writer.Status() == 401 || c.Writer.Status() == 403 {
 			auditLog := &models.RegistroAuditoria{
 				IdUsuario:       c.GetInt("user_id"),
@@ -173,33 +187,47 @@ func AuditMiddleware(auditService *services.AuditService) gin.HandlerFunc {
 			return
 		}
 
-		// Registrar acciones autorizadas normales
-		userID := c.GetInt("user_id")
-		username := c.GetString("user_email")
-		userRegional := c.GetString("user_regional")
-		userRole := c.GetString("user_role")
-		userRoleID := c.GetInt("user_role_id")
-
-		moduleName := getModuleFromPath(c.Request.URL.Path)
-		action := getActionFromMethod(c.Request.Method)
-		permissionUsed := getPermissionFromContext(c)
-
-		var oldValue, newValue models.JsonMap
-		if len(bodyBytes) > 0 && isWriteOperation(c.Request.Method) {
-			if err := json.Unmarshal(bodyBytes, &newValue); err != nil {
-				log.Printf("Error unmarshaling request body: %v", err)
+		// Preparar el valor nuevo según el método HTTP
+		var newValue models.JsonMap
+		switch c.Request.Method {
+		case "POST":
+			if len(bodyBytes) > 0 {
+				if err := json.Unmarshal(bodyBytes, &newValue); err != nil {
+					log.Printf("Error unmarshaling request body: %v", err)
+				}
+			}
+		case "PUT", "PATCH":
+			if len(bodyBytes) > 0 {
+				if err := json.Unmarshal(bodyBytes, &newValue); err != nil {
+					log.Printf("Error unmarshaling request body: %v", err)
+				}
+			}
+		case "DELETE":
+			newValue = models.JsonMap{"mensaje": "Recurso eliminado"}
+		case "GET":
+			if len(c.Request.URL.RawQuery) > 0 {
+				queryParams := make(map[string]string)
+				for key, values := range c.Request.URL.Query() {
+					if len(values) > 0 {
+						queryParams[key] = values[0]
+					}
+				}
+				if len(queryParams) > 0 {
+					newValue = models.JsonMap{"criterios_busqueda": queryParams}
+				}
 			}
 		}
 
+		// Registrar la acción
 		auditLog := &models.RegistroAuditoria{
-			IdUsuario:       userID,
-			Correo:          username,
-			Regional:        userRegional,
-			NombreModulo:    moduleName,
-			Accion:          action,
-			PermisoUsado:    permissionUsed,
-			Rol:             userRole,
-			IdRol:           userRoleID,
+			IdUsuario:       c.GetInt("user_id"),
+			Correo:          c.GetString("user_email"),
+			Regional:        c.GetString("user_regional"),
+			NombreModulo:    getModuleFromPath(c.Request.URL.Path),
+			Accion:          getActionFromMethod(c.Request.Method),
+			PermisoUsado:    getPermissionFromContext(c),
+			Rol:             c.GetString("user_role"),
+			IdRol:           c.GetInt("user_role_id"),
 			ValorAnterior:   oldValue,
 			ValorNuevo:      newValue,
 			DireccionIP:     c.ClientIP(),
@@ -218,7 +246,7 @@ func AuditMiddleware(auditService *services.AuditService) gin.HandlerFunc {
 	}
 }
 
-// getEntityState obtiene el estado actual de una entidad
+// Mantener todas las funciones auxiliares existentes
 func getEntityState(db *gorm.DB, entityType string, entityID int) models.JsonMap {
 	if entityID <= 0 {
 		return nil
@@ -251,6 +279,7 @@ func getEntityState(db *gorm.DB, entityType string, entityID int) models.JsonMap
 
 	return result
 }
+
 func convertToJsonMap(v interface{}) models.JsonMap {
 	jsonBytes, err := json.Marshal(v)
 	if err != nil {
@@ -262,14 +291,12 @@ func convertToJsonMap(v interface{}) models.JsonMap {
 		return nil
 	}
 
-	// Eliminar campos sensibles
 	delete(result, "contraseña")
 	delete(result, "password")
 
 	return result
 }
 
-// Funciones auxiliares
 func getModuleFromPath(path string) string {
 	parts := strings.Split(path, "/")
 	if len(parts) > 1 {
@@ -294,11 +321,9 @@ func getActionFromMethod(method string) string {
 }
 
 func getPermissionFromContext(c *gin.Context) string {
-	// Obtener el permiso del contexto si fue establecido por el middleware de autorización
 	if perm, exists := c.Get("permission_used"); exists {
 		return perm.(string)
 	}
-	// Inferir el permiso basado en el método HTTP
 	switch c.Request.Method {
 	case "GET":
 		return "R"

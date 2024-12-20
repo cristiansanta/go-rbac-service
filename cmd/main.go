@@ -63,7 +63,7 @@ func main() {
 
 	// Initialize services
 	authService := services.NewAuthService(userRepo, tokenBlacklistRepo)
-	auditService := services.NewAuditService(registroAuditoriaRepo)
+	auditService := services.NewAuditService(registroAuditoriaRepo, db)
 
 	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(authService)
